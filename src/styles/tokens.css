@@ -1,0 +1,24 @@
+/* Tokens de diseño: colores y familias tipográficas (ver DESIGN.md). */
+
+:root {
+  font-family: 'DM Sans',sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  font-weight: 400;
+  font-size: 13px;
+  --mono: 'DM Mono',monospace;
+  --display: 'Manrope',sans-serif;
+  --bg: #f5f1e8;
+  --panel: #fffdf7;
+  --panel2: #ece8dc;
+  --line: #111;
+  --muted: #55534d;
+  --muted2: #292821;
+  --purple: #6837d5;
+  --purple2: #4e20b7;
+  --green: #9fed5f;
+  --green2: #237437;
+  color: #171717;
+  background: #f5f1e8;
+}

@@ -1,0 +1,132 @@
+/* Estructura de la app: barra superior, contenido y cabecera de página. */
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.breadcrumbs svg {
+  color: #4d4e58;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.content {
+  max-width: 1180px;
+  margin: auto;
+  padding: 37px 39px 52px;
+}
+
+.eyebrow-line {
+  width: 23px;
+  height: 1px;
+  background: #57477b;
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 25px;
+}
+
+@media (max-width: 1250px) {
+  .content {
+    padding-left: 29px;
+    padding-right: 29px;
+  }
+}
+
+.topbar {
+  height: 61px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 37px;
+  background: var(--panel);
+  border-bottom: 4px solid var(--line);
+}
+
+@media (max-width: 1250px) {
+  .topbar {
+    padding-left: 29px;
+    padding-right: 29px;
+  }
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: #55534c;
+}
+
+.drive-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: #55534c;
+}
+
+.breadcrumbs strong {
+  font-weight: 500;
+  color: var(--line);
+}
+
+.avatar {
+  height: 26px;
+  width: 26px;
+  display: grid;
+  place-items: center;
+  font: 700 11px var(--display);
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: #a9eb69;
+  color: var(--line);
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: 500 9px var(--mono);
+  letter-spacing: .14em;
+  color: #592cb8;
+}
+
+.page-heading h1 {
+  font: 700 35px/1.22 var(--display);
+  letter-spacing: -.045em;
+  margin: 10px 0 5px;
+  color: var(--line);
+}
+
+.heading-period {
+  color: #6235c6;
+}
+
+.page-heading p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.main-area {
+  margin-left: 248px;
+  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+}

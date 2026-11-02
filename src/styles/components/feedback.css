@@ -1,0 +1,146 @@
+/* Avisos y estados: error, toast, información, vacío y progreso. */
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #291919;
+  border: 1px solid #5d3535;
+  color: #edb6b6;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-bottom: 14px;
+}
+
+.error-banner span {
+  flex: 1;
+}
+
+.error-banner button {
+  border: 0;
+  background: none;
+  color: #edb6b6;
+  display: grid;
+}
+
+.empty-state {
+  grid-column: 1/-1;
+  min-height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  color: #777986;
+  gap: 8px;
+  text-align: center;
+}
+
+.empty-state > div {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #2b2a34;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  color: #a38bdc;
+  background: #17151e;
+  margin-bottom: 3px;
+}
+
+.empty-state strong {
+  font: 600 13px var(--display);
+  color: #dbd9e2;
+}
+
+.empty-state span {
+  font-size: 10px;
+}
+
+.no-systems > div {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+
+.toast svg {
+  color: #72c999;
+}
+
+.batch-progress > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.no-systems {
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 3px dashed var(--line);
+  border-radius: 0;
+  color: #542ab0;
+}
+
+.no-systems strong {
+  font: 600 12px var(--display);
+  color: var(--line);
+}
+
+.no-systems span {
+  font-size: 10px;
+  color: #55534b;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 26px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  font-size: 11px;
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: #a9ed69;
+  color: var(--line);
+  font-weight: 800;
+  box-shadow: 5px 5px 0 var(--line);
+}
+
+.batch-progress {
+  display: grid;
+  gap: 7px;
+  margin: -5px 0 15px;
+  font-size: 10px;
+  color: #3f286c;
+}
+
+.batch-progress > div {
+  height: 4px;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+}
+
+.batch-progress i {
+  height: 100%;
+  display: block;
+  transition: width .2s;
+  border-radius: 0;
+  background: #7041d4;
+}
+
+.inline-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 12px;
+  color: #d4a877;
+  font-size: 9px;
+  margin-top: 8px;
+}

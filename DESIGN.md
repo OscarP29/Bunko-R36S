@@ -95,6 +95,15 @@ Sombras solidas (sin blur, salvo decorativas del fondo): `2px 2px`, `3px 3px`,
 
 ## 3. Componentes
 
+### Organizacion del codigo
+- Estilos en `src/styles/`, cargados en orden desde `index.css`: `tokens.css`,
+  `reset.css`, `layout/`, `components/` y `pages/`.
+- Prohibido `!important`: si una regla no gana, ajusta su selector o su orden.
+- Usa `var(--token)` en vez de repetir un color que ya es token.
+- Componentes compartidos en `src/components/ui/`: `Button`, `IconButton`,
+  `Field`, `Chip`, `ModalBackdrop` y `ModalHeader`. No escribas a mano
+  `className="primary-button"` ni la cabecera de un modal.
+
 ### Boton
 - **Primario**: fondo morado `#794ce2`/`#6837d5`, texto claro, borde 2-3px, sombra
   4-5px. Una sola accion principal por vista/modal.
@@ -278,18 +287,13 @@ Las acciones de caratula van DEBAJO de la imagen, nunca superpuestas.
 
 ## 7. Deuda de diseno detectada
 
-1. `base.css` conserva estilos de la base oscura (1px solid `#292a35`, radios
-   8px) anulados por `!important` en el tema. Archivo: `src/styles/base.css`.
-2. Bordes mezclados: 1.5px, 2px, 3px, 4px sin criterio. `src/styles/theme.css`.
+1. Quedan colores de la antigua base oscura en reglas sin revisar (por ejemplo
+   `#777986` en `.empty-state`). Sustituirlos por tokens al tocar cada pantalla.
+2. Bordes mezclados: 1.5px, 2px, 3px, 4px sin criterio.
 3. Sombras con dos familias (rgba vs `#111`) y 8 grosores distintos.
 4. Espaciados fuera de escala (11, 13, 17, 19, 25, 37px). `src/styles/*.css`.
-5. z-index sin escala (1, 5, 10, 20). `src/styles/base.css`.
+5. z-index sin escala (1, 5, 10, 20). `src/styles/components/modal.css`.
 6. Textos de 8-11px usados para informacion importante en varios componentes.
-7. `modal-backdrop` usa `backdrop-filter: blur(5px)` (base) y fondo `#17141dbb`
-   (tema): mezcla de dos enfoques.
-8. Inline styles para sombras y tamanos en `App.tsx` (avatares, iconos).
-9. `.note-composer` combina base (1px, radio 8px) y tema (3px, radio 0) con
-   `!important`.
 
 ---
 

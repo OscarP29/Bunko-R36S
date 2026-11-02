@@ -10,7 +10,9 @@ import {
   X,
 } from "lucide-react";
 import type { ArtworkMatch, Game, ImageStatus } from "../lib/types.ts";
+import { Button } from "./ui/Button.tsx";
 import { fileUrl } from "../lib/format.ts";
+import { ModalBackdrop, ModalHeader } from "./ui/Modal.tsx";
 
 type ArtworkModalProps = {
   game: Game | null;
@@ -34,22 +36,13 @@ export function ArtworkModal(props: ArtworkModalProps) {
   const searching = props.imageStatus === "searching";
 
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) props.onClose();
-      }}
-    >
+    <ModalBackdrop onClose={props.onClose}>
       <section className="modal">
-        <div className="modal-header">
-          <div>
-            <div className="eyebrow">PERSONALIZA TU CATÁLOGO</div>
-            <h2>Carátula del juego</h2>
-          </div>
-          <button className="icon-button" onClick={props.onClose}>
-            <X size={17} />
-          </button>
-        </div>
+        <ModalHeader
+          eyebrow="PERSONALIZA TU CATÁLOGO"
+          title="Carátula del juego"
+          onClose={props.onClose}
+        />
 
         <div className="modal-body">
           <div className="target-game">
@@ -74,9 +67,9 @@ export function ArtworkModal(props: ArtworkModalProps) {
               <strong>Buscar en Libretro Thumbnails</strong>
               <span>Carátulas PNG de la comunidad para tu consola</span>
             </div>
-            <button className="secondary-button" onClick={props.onSearch} disabled={searching}>
+            <Button onClick={props.onSearch} disabled={searching}>
               {searching ? <LoaderCircle size={14} className="spin" /> : "Buscar"}
-            </button>
+            </Button>
           </div>
 
           {props.warning && (
@@ -155,25 +148,25 @@ export function ArtworkModal(props: ArtworkModalProps) {
             </div>
           )}
 
-          <button className="text-button no-cover-button" onClick={props.onMarkNoCover}>
+          <Button variant="text" className="no-cover-button" onClick={props.onMarkNoCover}>
             <X size={13} /> Marcar como sin carátula
-          </button>
+          </Button>
 
           <div className="modal-footer">
             <span>
               <ImageIcon size={14} /> Formato PNG · 512 × 512 px
             </span>
-            <button
-              className="primary-button"
+            <Button
+              variant="primary"
               disabled={!props.imageBytes || props.loading}
               onClick={props.onSave}
             >
               {props.loading ? <LoaderCircle size={15} className="spin" /> : <Check size={16} />}{" "}
               Guardar carátula
-            </button>
+            </Button>
           </div>
         </div>
       </section>
-    </div>
+    </ModalBackdrop>
   );
 }

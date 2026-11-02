@@ -1,0 +1,325 @@
+import {
+  AlertCircle,
+  ArrowUpDown,
+  CheckCircle2,
+  ChevronRight,
+  Disc3,
+  FolderOpen,
+  Gamepad2,
+  HardDrive,
+  Image as ImageIcon,
+  LayoutGrid,
+  LoaderCircle,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { Button } from "../components/ui/Button.tsx";
+import { GameCard } from "../components/GameCard.tsx";
+import type { LibraryView } from "../hooks/useLibraryView.ts";
+import { formatSize } from "../lib/format.ts";
+import type { Game, System } from "../lib/types.ts";
+
+type LibraryPageProps = {
+  view: LibraryView;
+  root: string;
+  systems: System[];
+  selected: System | null;
+  totalGames: number;
+  error: string;
+  batchProgress: { done: number; total: number } | null;
+  markedNoCover: string[];
+  onChooseRoot: () => void;
+  onOpenFolder: (path: string) => void;
+  onAddGame: () => void;
+  onDismissError: () => void;
+  onSearchMissingCovers: () => void;
+  onChangeImage: (game: Game) => void;
+  onRemoveGame: (game: Game) => void;
+};
+
+export function LibraryPage({
+  view,
+  root,
+  systems,
+  selected,
+  totalGames,
+  error,
+  batchProgress,
+  markedNoCover,
+  onChooseRoot,
+  onOpenFolder,
+  onAddGame,
+  onDismissError,
+  onSearchMissingCovers,
+  onChangeImage,
+  onRemoveGame,
+}: LibraryPageProps) {
+  const {
+    search,
+    setSearch,
+    filter,
+    setFilter,
+    sortBy,
+    setSortBy,
+    viewMode,
+    setViewMode,
+    visibleGames,
+  } = view;
+  const noImageTotal = systems.reduce(
+    (total, system) => total + system.missingImages,
+    0,
+  );
+
+  return (
+      <div className="content">
+        {!root ? (
+          <section className="welcome-card">
+            <div className="welcome-orb">
+              <Disc3 size={42} />
+            </div>
+            <span className="eyebrow">TU CONSOLA, A TU MANERA</span>
+            <h1>
+              Todo tu catálogo.
+              <br />
+              <em>En un solo lugar.</em>
+            </h1>
+            <p>
+              Conecta la microSD de tu R36S para organizar juegos, carátulas
+              y tu próxima lista de partidas.
+            </p>
+            <Button variant="primary" onClick={onChooseRoot}>
+              <FolderOpen size={16} /> Elegir carpeta ROMS{" "}
+              <ChevronRight size={15} />
+            </Button>
+            <div className="welcome-note">
+              <CheckCircle2 size={15} /> Tus archivos se quedan en la
+              tarjeta
+            </div>
+          </section>
+        ) : (
+          <>
+            <section className="page-heading">
+              <div>
+                <div className="eyebrow">
+                  BIBLIOTECA DE JUEGOS <span className="eyebrow-line" />
+                </div>
+                <h1>
+                  {selected?.name || "Tu colección"}
+                  <span className="heading-period">.</span>
+                </h1>
+                <p>
+                  {selected
+                    ? `Explora y organiza tus juegos de ${selected.name}.`
+                    : "Selecciona un emulador para ver sus juegos."}
+                </p>
+              </div>
+              <div className="heading-actions">
+                {selected && (
+                  <Button
+                    onClick={() => onOpenFolder(selected.path)}
+                  >
+                    <FolderOpen size={14} /> Abrir emulador
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  className="add-button"
+                  onClick={onAddGame}
+                  disabled={!selected}
+                >
+                  <Plus size={17} /> Añadir juego
+                </Button>
+              </div>
+            </section>
+
+            <section className="stats-row">
+              <div className="stat-card">
+                <div className="stat-icon purple">
+                  <Gamepad2 size={17} />
+                </div>
+                <div>
+                  <span>JUEGOS EN TOTAL</span>
+                  <strong>{formatSize(totalGames)}</strong>
+                  <small>en {systems.length} sistemas</small>
+                </div>
+                <div className="stat-spark">✦─✦╰✦╯✦</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon teal">
+                  <ImageIcon size={17} />
+                </div>
+                <div>
+                  <span>CARÁTULAS PENDIENTES</span>
+                  <strong>{formatSize(noImageTotal)}</strong>
+                  <small>
+                    {noImageTotal
+                      ? "Algunos juegos esperan imagen"
+                      : "Toda la colección tiene imagen"}
+                  </small>
+                </div>
+                <div className="stat-status">
+                  <span />
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon amber">
+                  <HardDrive size={17} />
+                </div>
+                <div>
+                  <span>SISTEMAS DETECTADOS</span>
+                  <strong>{systems.length}</strong>
+                  <small>carpetas de emuladores</small>
+                </div>
+                <div className="stat-device">
+                  <Disc3 size={29} />
+                </div>
+              </div>
+            </section>
+
+            {error && (
+              <div className="error-banner">
+                <AlertCircle size={16} />
+                <span>{error}</span>
+                <button onClick={onDismissError}>
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+
+            {!systems.length ? (
+              <div className="no-systems">
+                <Gamepad2 size={25} />
+                <div>
+                  <strong>No encontré emuladores todavía</strong>
+                  <span>
+                    Elige la carpeta que contiene las carpetas de tus
+                    sistemas.
+                  </span>
+                </div>
+                <Button onClick={onChooseRoot}>
+                  Elegir otra carpeta
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="toolbar">
+                  <div className="search-box">
+                    <Search size={16} />
+                    <input
+                      placeholder="Buscar un juego..."
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
+                    <kbd>⌘ K</kbd>
+                  </div>
+                  <div className="filter-group">
+                    <button
+                      className={filter === "all" ? "filter-active" : ""}
+                      onClick={() => setFilter("all")}
+                    >
+                      Todos <span>{selected?.gameCount ?? 0}</span>
+                    </button>
+                    <button
+                      className={
+                        filter === "missing" ? "filter-active" : ""
+                      }
+                      onClick={() => setFilter("missing")}
+                    >
+                      <span className="mini-dot" />
+                      Sin carátula{" "}
+                      <span>{selected?.missingImages ?? 0}</span>
+                    </button>
+                  </div>
+                  <Button
+                    className="sort-button"
+                    onClick={() =>
+                      setSortBy((value) =>
+                        value === "name" ? "file" : "name",
+                      )
+                    }
+                    title="Cambiar orden"
+                  >
+                    <ArrowUpDown size={13} />
+                    {sortBy === "name" ? "Nombre" : "Archivo"}
+                  </Button>
+                  <Button
+                    className="view-toggle"
+                    onClick={() =>
+                      setViewMode((value) =>
+                        value === "grid" ? "list" : "grid",
+                      )
+                    }
+                    title="Cambiar vista"
+                  >
+                    <LayoutGrid size={13} />
+                    {viewMode === "grid" ? "Cuadrícula" : "Lista"}
+                  </Button>
+                  <div className="view-label">
+                    {formatSize(visibleGames.length)} juegos
+                  </div>
+                  <Button
+                    onClick={onSearchMissingCovers}
+                    disabled={Boolean(batchProgress) || !noImageTotal}
+                  >
+                    <Sparkles size={13} /> Buscar faltantes
+                  </Button>
+                </div>
+
+                {batchProgress && (
+                  <div className="batch-progress">
+                    <span>
+                      <LoaderCircle size={14} className="spin" /> Buscando
+                      carátulas: {batchProgress.done} de{" "}
+                      {batchProgress.total}
+                    </span>
+                    <div>
+                      <i
+                        style={{
+                          width: `${
+                            batchProgress.total
+                              ? (batchProgress.done / batchProgress.total) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div
+                  className={`games-grid ${viewMode === "list" ? "list-mode" : ""}`}
+                >
+                  {visibleGames.map((game) => (
+                    <GameCard
+                      key={game.id}
+                      game={game}
+                      onImage={() => onChangeImage(game)}
+                      onRemove={() => onRemoveGame(game)}
+                      markedNoCover={markedNoCover.includes(game.fileName)}
+                    />
+                  ))}
+                </div>
+
+                {!visibleGames.length && (
+                  <div className="empty-state">
+                    <div>
+                      <Search size={20} />
+                    </div>
+                    <strong>No hay juegos para mostrar</strong>
+                    <span>
+                      {filter === "missing"
+                        ? "¡Todos los juegos de este sistema tienen carátula!"
+                        : "Prueba otra búsqueda o añade un juego a tu colección."}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
+  );
+}

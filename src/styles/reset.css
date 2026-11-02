@@ -1,0 +1,29 @@
+/* Reglas globales mínimas sobre elementos HTML. */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+input {
+  font: inherit;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+body {
+  margin: 0;
+  min-width: 1050px;
+  min-height: 100vh;
+  background: var(--bg);
+  color: #171717;
+}

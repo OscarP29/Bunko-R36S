@@ -1,0 +1,152 @@
+/* Campos, selector segmentado y zonas de selección (ver Field.tsx). */
+
+.filter-group button > span:last-child:not(.mini-dot) {
+  font: 9px var(--mono);
+  color: #777987;
+  background: #1a1b23;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.filter-group button.filter-active > span:last-child:not(.mini-dot) {
+  color: #c2b2fa;
+  background: #312b3e;
+}
+
+.mini-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d99c64;
+}
+
+.file-picker span,
+.image-drop span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-field::placeholder {
+  color: #686a75;
+}
+
+.image-drop-large {
+  margin: 10px 0 12px;
+  height: 49px;
+}
+
+.filter-group {
+  height: 33px;
+  display: flex;
+  padding: 2px;
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: #e7e1d4;
+}
+
+.filter-group button {
+  border: 0;
+  background: none;
+  padding: 0 9px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  border-radius: 0;
+  color: #37342d;
+}
+
+.filter-group button.filter-active {
+  background: #7041d4;
+  color: #fff;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 7px;
+  letter-spacing: .1em;
+  font: 11px var(--mono);
+  color: #4f4b43;
+}
+
+.file-picker {
+  width: 100%;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  text-align: left;
+  margin-bottom: 15px;
+  font-size: 10px;
+  border: 3px dashed var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  color: #38352f;
+}
+
+.image-drop {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  text-align: left;
+  font-size: 10px;
+  border: 3px dashed var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  color: #38352f;
+}
+
+.file-picker:hover,
+.image-drop:hover {
+  background: #e6dcff;
+  color: var(--line);
+}
+
+.text-field {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  outline: none;
+  font-size: 10px;
+  margin-bottom: 14px;
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--line);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+.field {
+  display: grid;
+  flex: 1 1 120px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-wide {
+  flex: 2 1 200px;
+}
+
+.field .field-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field .text-field {
+  height: 40px;
+  margin: 0;
+  font-size: 14px;
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.field .text-field::placeholder {
+  color: var(--muted);
+}

@@ -59,7 +59,7 @@ Aplicación de escritorio para Windows, hecha con Tauri 2, React y TypeScript, q
 
 - La dirección visual actual es neo-brutalista clara: papel crema, contornos negros gruesos, esquinas cuadradas, sombras desplazadas y acentos morados/verde lima inspirados en Game Boy Advance.
 - Las tarjetas de juegos tienen sombra y movimiento en perspectiva al pasar el cursor para sugerir cartuchos en relieve.
-- Los estilos están separados en `src/styles/fonts.css`, `base.css` (layout) y `theme.css` (tema visual). Las declaraciones de la base que el tema sobrescribía se eliminaron, pero la consolidación total de colores sigue pendiente.
+- Los estilos están en `src/styles/`, divididos por zonas y cargados desde `index.css`. No se usa `!important`; las reglas y la deuda pendiente están en `DESIGN.md`.
 
 ## Seguridad y datos
 
@@ -101,7 +101,10 @@ npm test            # ambas suites
 ## Estructura importante
 
 - `src/App.tsx`: estado de la interfaz, selección de microSD, biblioteca, búsqueda de carátulas y libreta.
-- `src/components/`: `GameCard`, `AddGameModal` y `ArtworkModal`.
+- `src/pages/`: `LibraryPage` y `NotesPage`.
+- `src/hooks/`: `useLibraryView` y `useNotesView` (estado de vista que se conserva al cambiar de pestaña).
+- `src/components/`: `Sidebar`, `Topbar`, `GameCard`, `NoteCard`, `AddGameModal`, `ArtworkModal` y `AiListOrganizer`.
+- `src/components/ui/`: `Button`, `IconButton`, `Field`, `Chip`, `ModalBackdrop` y `ModalHeader`.
 - `src/lib/rom.ts`: normalización de nombres, regiones y mapeo de carpetas a consolas Libretro.
 - `src/lib/artwork.ts`: lectura de índices, ranking con Fuse y heurísticas de match automático.
 - `src/lib/backend.ts`: envoltorios tipados de los comandos Rust.
@@ -109,7 +112,7 @@ npm test            # ambas suites
 - `src/lib/http.ts`: peticiones con el plugin HTTP y reintento desde el webview.
 - `src/lib/aliases.ts`: lectura de `src/aliases.json`.
 - `src/lib/*.test.ts`: pruebas de la lógica pura.
-- `src/styles/`: `fonts.css`, `base.css` (layout) y `theme.css` (neo-brutalista).
+- `src/styles/`: `tokens.css`, `reset.css`, `layout/`, `components/` y `pages/`.
 - `src-tauri/src/lib.rs`: comandos, lectura/escritura CSV atómica con copia de seguridad, índice de imágenes, caché en disco, validación de rutas y pruebas unitarias.
 - `src-tauri/tauri.conf.json`: ventanas, CSP, protocolo de assets y configuración del plugin HTTP.
 - `src-tauri/capabilities/default.json`: permisos y scope de red.

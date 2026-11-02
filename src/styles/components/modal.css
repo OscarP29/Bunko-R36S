@@ -1,0 +1,84 @@
+/* Estructura común de los modales (ver Modal.tsx). */
+
+.modal-header .eyebrow {
+  font-size: 8px;
+}
+
+.modal-footer > span svg {
+  color: #71bd9b;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #17141dbb;
+}
+
+.modal {
+  width: min(510px,100%);
+  overflow: hidden;
+  border: 4px solid var(--line);
+  border-radius: 0;
+  background: #f8f4eb;
+  box-shadow: 9px 9px 0 var(--line);
+}
+
+.modal-body {
+  padding: 20px 22px 28px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid var(--line);
+  padding: 16px 22px;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  background: var(--panel);
+  padding: 16px 22px;
+  border-top: 3px solid var(--line);
+}
+
+.modal-footer > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  color: #4f4b43;
+}
+
+.modal-wide {
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-wide .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.modal-subtitle {
+  margin: 6px 0 0;
+  color: #5f5847;
+  max-width: 62ch;
+}
+
+.modal-header h2 {
+  font: 700 19px var(--display);
+  letter-spacing: -.03em;
+  margin: 6px 0 0;
+  color: var(--line);
+}

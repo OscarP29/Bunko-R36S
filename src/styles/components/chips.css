@@ -1,0 +1,45 @@
+/* Etiquetas compactas (ver Chip.tsx). */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1.5px solid var(--line);
+  background: var(--panel2);
+  font-size: 11px;
+}
+
+.chip.caps {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.chip.category {
+  background: #d5c7f7;
+}
+
+.chip.alta {
+  background: #f4b66c;
+  font-weight: 700;
+}
+
+.chip.media {
+  background: #b99aff;
+}
+
+.chip.baja {
+  background: #ddd5c7;
+}
+
+.chip.system {
+  background: #a9ee69;
+}
+
+.chip.gap {
+  background: #f7edcc;
+}
+
+.chip.folder {
+  background: var(--bg);
+  font-family: var(--mono);
+}

@@ -3,7 +3,6 @@ import {
   AlertCircle,
   Check,
   CheckCircle2,
-  Disc3,
   Gamepad2,
   Image as ImageIcon,
   LoaderCircle,
@@ -12,7 +11,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { ImageStatus, Note, NewGameDraft } from "../lib/types.ts";
+import { ModalBackdrop, ModalHeader } from "./ui/Modal.tsx";
+import type { Note, NewGameDraft } from "../lib/types.ts";
+import { Button, IconButton } from "./ui/Button.tsx";
 
 type AddGameModalProps = {
   systemName: string;
@@ -35,32 +36,15 @@ export function AddGameModal(props: AddGameModalProps) {
   const pendingNotes = props.notes.filter((note) => !note.done);
   const completedNotes = props.notes.filter((note) => note.done);
   return (
-    <div
-      className="modal-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) props.onClose();
-      }}
-    >
+    <ModalBackdrop onClose={props.onClose}>
       <div className={`add-game-modal-pair ${props.notes.length ? "has-pending-notes" : ""}`}>
       <section className="modal modal-wide">
-        <div className="modal-header">
-          <div>
-            <div className="eyebrow">AMPLÍA TU COLECCIÓN</div>
-            <h2>Añadir juegos</h2>
-            <p className="modal-subtitle">
-              Selecciona uno o varios archivos, ajusta los nombres y, si quieres,
-              busca o sube una carátula para cada uno. Los juegos se añadirán en
-              un solo paso.
-            </p>
-          </div>
-          <button
-            className="icon-button"
-            onClick={props.onClose}
-            aria-label="Cerrar"
-          >
-            <X size={17} />
-          </button>
-        </div>
+        <ModalHeader
+          eyebrow="AMPLÍA TU COLECCIÓN"
+          title="Añadir juegos"
+          subtitle="Selecciona uno o varios archivos, ajusta los nombres y, si quieres, busca o sube una carátula para cada uno. Los juegos se añadirán en un solo paso."
+          onClose={props.onClose}
+        />
 
         <div className="modal-body add-game-body">
           <div className="add-game-main">
@@ -143,8 +127,7 @@ export function AddGameModal(props: AddGameModalProps) {
                       )}
                     </div>
                     <div className="draft-cover-actions">
-                      <button
-                        className="secondary-button"
+                      <Button
                         onClick={() => props.onDraftSearch(draft.id)}
                         disabled={draft.searching}
                         aria-label={`Buscar carátula para ${draft.fileName}`}
@@ -155,34 +138,32 @@ export function AddGameModal(props: AddGameModalProps) {
                           <Sparkles size={13} />
                         )}
                         {draft.searching ? "Buscando…" : "Buscar"}
-                      </button>
-                      <button
-                        className="secondary-button"
+                      </Button>
+                      <Button
                         onClick={() => fileInputs.current[draft.id]?.click()}
                         aria-label={`Subir carátula para ${draft.fileName}`}
                       >
                         <ImageIcon size={13} /> Subir
-                      </button>
+                      </Button>
                       {draft.imagePreview && (
-                        <button
-                          className="secondary-button"
+                        <Button
                           onClick={() => props.onDraftClearImage(draft.id)}
                           aria-label={`Quitar carátula de ${draft.fileName}`}
                         >
                           <X size={13} /> Quitar
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
 
-                  <button
-                    className="icon-button remove-draft"
+                  <IconButton
+                    label={`Quitar archivo ${draft.fileName}`}
+                    className="remove-draft"
                     onClick={() => props.onRemoveDraft(draft.id)}
-                    aria-label={`Quitar archivo ${draft.fileName}`}
                     title="Quitar de la selección"
                   >
                     <Trash2 size={14} />
-                  </button>
+                  </IconButton>
                 </article>
               ))}
             </div>
@@ -205,8 +186,8 @@ export function AddGameModal(props: AddGameModalProps) {
               ? `${props.drafts.length} juego(s) se copiarán a la microSD`
               : "Selecciona archivos para continuar"}
           </span>
-          <button
-            className="primary-button"
+          <Button
+            variant="primary"
             onClick={props.onSave}
             disabled={!props.drafts.length || props.loading}
           >
@@ -217,24 +198,22 @@ export function AddGameModal(props: AddGameModalProps) {
             )}{" "}
             Añadir {props.drafts.length ? props.drafts.length : ""} juego
             {props.drafts.length === 1 ? "" : "s"}
-          </button>
+          </Button>
         </div>
       </section>
 
       {props.notes.length > 0 && (
         <aside className="modal pending-notes-modal">
-          <div className="modal-header">
-            <div>
-              <div className="eyebrow">TU COLECCIÓN</div>
-              <h2>Lista de pendientes</h2>
-              <p className="modal-subtitle">
-                Marca los juegos que ya agregaste para tacharlos.
-              </p>
-            </div>
-            <span className="draft-notes-count">
-              {pendingNotes.length} pendientes · {completedNotes.length} tachados
-            </span>
-          </div>
+          <ModalHeader
+            eyebrow="TU COLECCIÓN"
+            title="Lista de pendientes"
+            subtitle="Marca los juegos que ya agregaste para tacharlos."
+            actions={
+              <span className="draft-notes-count">
+                {pendingNotes.length} pendientes · {completedNotes.length} tachados
+              </span>
+            }
+          />
           <div className="modal-body pending-notes-body">
             <div className="draft-notes-list">
               {props.notes.map((note) => (
@@ -255,6 +234,6 @@ export function AddGameModal(props: AddGameModalProps) {
         </aside>
       )}
       </div>
-    </div>
+    </ModalBackdrop>
   );
 }

@@ -8,18 +8,19 @@ import {
   FileJson,
   LoaderCircle,
   Sparkles,
+  Wand2,
   Trash2,
   Undo2,
-  Wand2,
   X,
 } from "lucide-react";
 import type {
-  AiCategory,
   AiOrganizerJson,
-  AiCategoryItem,
   Game,
   System,
 } from "../lib/types.ts";
+import { Button, IconButton } from "./ui/Button.tsx";
+import { Chip } from "./ui/Chip.tsx";
+import { ModalBackdrop, ModalHeader } from "./ui/Modal.tsx";
 
 type FullEntry = Game & {
   systemName: string;
@@ -180,6 +181,7 @@ export function AiListOrganizer({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [expandAll, setExpandAll] = useState(true);
   const [profileOpen, setProfileOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
 
   const hasLibrary = fullLibrary.length > 0;
 
@@ -188,8 +190,8 @@ export function AiListOrganizer({
       acc[system.name] = system.gameCount;
       return acc;
     }, {});
-    return { countBySystem, total: fullLibrary.length };
-  }, [systems, fullLibrary]);
+    return { countBySystem };
+  }, [systems]);
 
   // Auto-parse when JSON changes.
   useEffect(() => {
@@ -285,15 +287,6 @@ export function AiListOrganizer({
   function restoreAll() {
     setRemovedKeys(new Set());
     setRemovedStack([]);
-  }
-
-  function toggleCategory(name: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
   }
 
   function toggleAll() {
@@ -434,51 +427,44 @@ export function AiListOrganizer({
   }
 
   return (
-    <div className="ai-organizer">
-      <div className="ai-organizer-header">
-        <div>
-          <div className="eyebrow">RECOMENDAR CON IA</div>
-          <h3>Generar prompt + importar recomendaciones</h3>
-          <p>
-            Genera un prompt con tu biblioteca para que la IA recomiende juegos
-            NUEVOS que merezca la pena añadir. Las recomendaciones se importan a
-            tu lista de pendientes.
-          </p>
-        </div>
-        <div className="ai-organizer-stats">
-          <span>{stats.total} juegos cargados</span>
-          <span>{systems.length} sistemas</span>
-        </div>
-      </div>
+    <>
+      <Button
+        title="Genera un prompt, revisa las recomendaciones y añádelas a tus pendientes"
+        onClick={() => setIsOpen(true)}
+      >
+        <Sparkles size={16} /> Recomendar con IA
+      </Button>
 
+      {isOpen && (
+      <ModalBackdrop className="ai-modal-backdrop" onClose={() => setIsOpen(false)}>
+        <section className="modal ai-organizer-modal">
+          <ModalHeader
+            eyebrow="RECOMENDAR CON IA"
+            title="Generar recomendaciones"
+            subtitle="Prepara el prompt, pega la respuesta, revisa y añade los juegos."
+            closeLabel="Cerrar generador IA"
+            onClose={() => setIsOpen(false)}
+          />
+
+          <div className="modal-body ai-organizer-modal-body">
+      <div className="ai-organizer">
       <div className="ai-organizer-actions">
-        <button
-          className="secondary-button"
+        <Button
           onClick={onLoadLibrary}
           disabled={loadingLibrary}
         >
-          {loadingLibrary ? (
-            <LoaderCircle size={14} className="spin" />
-          ) : (
-            <Wand2 size={14} />
-          )}
+          {loadingLibrary ? <LoaderCircle size={14} className="spin" /> : <Wand2 size={14} />}
           {hasLibrary ? "Recargar biblioteca completa" : "Cargar biblioteca completa"}
-        </button>
-        <button
-          className="primary-button"
-          onClick={generate}
-          disabled={!hasLibrary}
-        >
+        </Button>
+        <Button variant="primary" onClick={generate} disabled={!hasLibrary}>
           <Sparkles size={16} /> Generar prompt
-        </button>
+        </Button>
       </div>
 
       {Object.keys(stats.countBySystem).length > 0 && (
         <div className="ai-system-chips">
           {Object.entries(stats.countBySystem).map(([name, count]) => (
-            <span key={name}>
-              {name}: {count}
-            </span>
+            <span key={name}>{name}: {count}</span>
           ))}
         </div>
       )}
@@ -492,10 +478,10 @@ export function AiListOrganizer({
                 Pégalo tal cual en ChatGPT, Claude, Gemini, Grok...
               </span>
             </div>
-            <button className="secondary-button" onClick={copyPrompt}>
+            <Button onClick={copyPrompt}>
               {copied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
               {copied ? "Copiado" : "Copiar prompt"}
-            </button>
+            </Button>
           </header>
           <textarea
             className="ai-textarea"
@@ -515,13 +501,12 @@ export function AiListOrganizer({
               modificarán juegos existentes.
             </span>
           </div>
-          <button
-            className="secondary-button"
+          <Button
             onClick={parseJson}
             disabled={!jsonInput.trim()}
           >
             <FileJson size={14} /> Previsualizar
-          </button>
+          </Button>
         </header>
         <textarea
           className="ai-textarea"
@@ -573,9 +558,7 @@ export function AiListOrganizer({
                     <div className="ai-chip-row">
                       <span className="ai-chip-label">Géneros:</span>
                       {parsed.profile.topGenres.map((g, i) => (
-                        <span className="ai-chip" key={i}>
-                          {g}
-                        </span>
+                        <Chip key={i}>{g}</Chip>
                       ))}
                     </div>
                   ) : null}
@@ -583,9 +566,7 @@ export function AiListOrganizer({
                     <div className="ai-chip-row">
                       <span className="ai-chip-label">Sagas:</span>
                       {parsed.profile.favoriteSagas.map((g, i) => (
-                        <span className="ai-chip" key={i}>
-                          {g}
-                        </span>
+                        <Chip key={i}>{g}</Chip>
                       ))}
                     </div>
                   ) : null}
@@ -593,9 +574,7 @@ export function AiListOrganizer({
                     <div className="ai-chip-row">
                       <span className="ai-chip-label">Huecos:</span>
                       {parsed.profile.gaps.map((g, i) => (
-                        <span className="ai-chip gap" key={i}>
-                          {g}
-                        </span>
+                        <Chip tone="gap" key={i}>{g}</Chip>
                       ))}
                     </div>
                   ) : null}
@@ -618,18 +597,18 @@ export function AiListOrganizer({
                 </button>
               ))}
             </div>
-            <button className="secondary-button" onClick={toggleAll}>
+            <Button onClick={toggleAll}>
               {expandAll ? "Contraer todo" : "Expandir todo"}
-            </button>
+            </Button>
             {removedStack.length > 0 && (
-              <button className="secondary-button" onClick={undoLast}>
+              <Button onClick={undoLast}>
                 <Undo2 size={14} /> Deshacer
-              </button>
+              </Button>
             )}
             {removedKeys.size > 0 && (
-              <button className="secondary-button" onClick={restoreAll}>
+              <Button onClick={restoreAll}>
                 Restaurar todos
-              </button>
+              </Button>
             )}
           </div>
 
@@ -669,9 +648,8 @@ export function AiListOrganizer({
                       </span>
                       <div className="ai-cat-actions">
                         <small>{items.length}</small>
-                        <button
-                          className="icon-button"
-                          aria-label={`Quitar categoría ${cat.name}`}
+                        <IconButton
+                          label={`Quitar categoría ${cat.name}`}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -679,7 +657,7 @@ export function AiListOrganizer({
                           }}
                         >
                           <Trash2 size={13} />
-                        </button>
+                        </IconButton>
                       </div>
                     </summary>
                     {cat.description && (
@@ -701,20 +679,17 @@ export function AiListOrganizer({
                           <li key={key} className="ai-game-card">
                             <div className="ai-game-top">
                               <strong>{title}</strong>
-                              <button
-                                className="icon-button"
-                                aria-label={`Quitar ${title}`}
+                              <IconButton
+                                label={`Quitar ${title}`}
                                 onClick={() => removeItem(ci, ii)}
                               >
                                 <X size={14} />
-                              </button>
+                              </IconButton>
                             </div>
                             <div className="ai-game-chips">
-                              <span className={`ai-chip prio-${prio}`}>
-                                {prio.toUpperCase()}
-                              </span>
+                              <Chip tone={prio}>{prio.toUpperCase()}</Chip>
                               {system && (
-                                <span className="ai-chip system">{system}</span>
+                                <Chip tone="system">{system}</Chip>
                               )}
                             </div>
                             {reason && (
@@ -729,15 +704,15 @@ export function AiListOrganizer({
                             {suggested && (
                               <div className="ai-game-file">
                                 <code>{suggested}</code>
-                                <button
-                                  className="text-button"
+                                <Button
+                                  variant="text"
                                   onClick={() =>
                                     navigator.clipboard.writeText(suggested)
                                   }
                                   aria-label={`Copiar nombre de archivo ${suggested}`}
                                 >
                                   <Copy size={12} /> Copiar
-                                </button>
+                                </Button>
                               </div>
                             )}
                           </li>
@@ -758,16 +733,6 @@ export function AiListOrganizer({
                 </div>
               )}
             </div>
-            <footer>
-              <button
-                className="primary-button"
-                onClick={importToList}
-                disabled={totalVisible === 0}
-              >
-                <CheckCircle2 size={16} /> Añadir {totalVisible} juego
-                {totalVisible === 1 ? "" : "s"}
-              </button>
-            </footer>
           </section>
         </>
       )}
@@ -781,6 +746,21 @@ export function AiListOrganizer({
           </button>
         </div>
       )}
-    </div>
+      </div>
+          </div>
+          <div className="modal-footer ai-organizer-modal-footer">
+            <span>
+              {parsed ? `${totalVisible} juegos listos para añadir` : "Pega la respuesta de la IA para previsualizarla"}
+            </span>
+            {parsed && (
+              <Button variant="primary" onClick={() => { importToList(); setIsOpen(false); }} disabled={totalVisible === 0}>
+                <CheckCircle2 size={16} /> Añadir {totalVisible} juego{totalVisible === 1 ? "" : "s"}
+              </Button>
+            )}
+          </div>
+        </section>
+      </ModalBackdrop>
+      )}
+    </>
   );
 }

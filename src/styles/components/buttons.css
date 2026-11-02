@@ -1,0 +1,99 @@
+/* Botones compartidos (ver Button.tsx). */
+
+.icon-button {
+  width: 29px;
+  height: 29px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #9698a3;
+  display: grid;
+  place-items: center;
+}
+
+.icon-button:hover {
+  border-color: #30313c;
+  background: #171821;
+  color: #efedf4;
+}
+
+.icon-button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.primary-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.secondary-button:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.text-button:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.primary-button {
+  height: 35px;
+  padding: 0 13px;
+  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: filter .15s,transform .15s;
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: var(--green);
+  color: var(--line);
+  font-weight: 800;
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.primary-button:hover:not(:disabled) {
+  filter: brightness(1.09);
+  background: #b4f77d;
+  transform: translate(-2px,-2px);
+  box-shadow: 6px 6px 0 var(--line);
+}
+
+.secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font-size: 10px;
+  border: 3px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--line);
+  font-weight: 800;
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #d9c9ff;
+  color: var(--line);
+  transform: translate(-1px,-1px);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.text-button {
+  border: 0;
+  background: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  padding: 2px 0;
+  color: #5529b4;
+}
