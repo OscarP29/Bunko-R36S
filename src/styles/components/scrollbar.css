@@ -1,0 +1,41 @@
+/* Barra de desplazamiento neo-brutalista: pulgar morado con contorno, sin radios. */
+
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--panel2);
+  border-left: 2px solid var(--line);
+}
+
+::-webkit-scrollbar-track:horizontal {
+  border-top: 2px solid var(--line);
+  border-left: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--purple);
+  border: 2px solid var(--line);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--purple2);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--green);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--panel2);
+}
+
+/* Navegadores sin `::-webkit-scrollbar` (Firefox): solo colores. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(--purple) var(--panel2);
+  }
+}

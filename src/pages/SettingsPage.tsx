@@ -28,6 +28,12 @@ const EXTRACT_OPTIONS = [
   { value: "auto", label: "Extraer siempre" },
 ] as const;
 
+const SOUND_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "alerts", label: "Solo avisos" },
+  { value: "off", label: "Desactivados" },
+] as const;
+
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Oscuro" },
@@ -103,6 +109,19 @@ export function SettingsPage({
             value={settings.theme}
             options={THEME_OPTIONS}
             onChange={(theme) => updateSettings({ theme })}
+          />
+        </div>
+
+        <div className="settings-row-item">
+          <div>
+            <strong>Sonidos</strong>
+            <p>Al pulsar botones y cuando aparece un aviso.</p>
+          </div>
+          <Segmented
+            label="Sonidos"
+            value={settings.sounds}
+            options={SOUND_OPTIONS}
+            onChange={(sounds) => updateSettings({ sounds })}
           />
         </div>
       </section>

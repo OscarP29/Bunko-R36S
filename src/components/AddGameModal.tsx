@@ -27,6 +27,12 @@ const ARCHIVE_WARNINGS = {
   "7z": "No se recomienda copiar archivos .7z: la consola tarda más en descomprimirlos que un .zip o una ROM suelta.",
 } as const;
 
+function archiveSummary(count: number) {
+  return count === 1
+    ? "1 archivo está comprimido."
+    : `${count} archivos están comprimidos.`;
+}
+
 type AddGameModalProps = {
   systemName: string;
   drafts: NewGameDraft[];
@@ -36,7 +42,8 @@ type AddGameModalProps = {
   onChooseRoms: () => void;
   onRemoveDraft: (id: string) => void;
   onDraftTitleChange: (id: string, value: string) => void;
-  onDraftExtractChange: (id: string, extract: boolean) => void;
+  autoExtract: boolean;
+  onExtractAllChange: (extract: boolean) => void;
   onDraftSearch: (id: string) => void;
   onDraftSearchAll: () => void;
   onDraftSelectImage: (id: string, file: File) => void;
@@ -53,6 +60,9 @@ export function AddGameModal(props: AddGameModalProps) {
   const draftsWithoutCover = props.drafts.filter(
     (draft) => !draft.imageBytes,
   ).length;
+  const archived = props.drafts.filter((draft) => draft.archive);
+  const archiveKinds = [...new Set(archived.map((draft) => draft.archive!))];
+  const extractAll = archived.every((draft) => draft.extract);
   return (
     <ModalBackdrop onClose={props.onClose}>
       <div className={`add-game-modal-pair ${props.notes.length ? "has-pending-notes" : ""}`}>
@@ -84,6 +94,24 @@ export function AddGameModal(props: AddGameModalProps) {
                   : "Selecciona uno o varios archivos de juego"}
               </span>
             </button>
+
+          {archived.length > 0 && !props.autoExtract && (
+            <div className="draft-archive" role="note">
+              <p>
+                <AlertTriangle size={16} />
+                <span>
+                  {archiveSummary(archived.length)}{" "}
+                  {archiveKinds.map((kind) => ARCHIVE_WARNINGS[kind]).join(" ")}
+                </span>
+              </p>
+              <Segmented
+                label="Qué hacer con los archivos comprimidos"
+                value={extractAll ? "extract" : "keep"}
+                options={EXTRACT_OPTIONS}
+                onChange={(value) => props.onExtractAllChange(value === "extract")}
+              />
+            </div>
+          )}
 
           {props.drafts.length > 1 && (
             <div className="draft-bulk">
@@ -167,22 +195,6 @@ export function AddGameModal(props: AddGameModalProps) {
                         </span>
                       )}
                     </div>
-                    {draft.archive && (
-                      <div className="draft-archive" role="note">
-                        <p>
-                          <AlertTriangle size={16} />
-                          <span>{ARCHIVE_WARNINGS[draft.archive]}</span>
-                        </p>
-                        <Segmented
-                          label={`Qué hacer con ${draft.fileName}`}
-                          value={draft.extract ? "extract" : "keep"}
-                          options={EXTRACT_OPTIONS}
-                          onChange={(value) =>
-                            props.onDraftExtractChange(draft.id, value === "extract")
-                          }
-                        />
-                      </div>
-                    )}
                     <div className="draft-cover-actions">
                       <Button
                         onClick={() => props.onDraftSearch(draft.id)}
@@ -264,7 +276,7 @@ export function AddGameModal(props: AddGameModalProps) {
           <ModalHeader
             eyebrow="TU COLECCIÓN"
             title="Lista de pendientes"
-            subtitle="Marca los juegos que ya agregaste para tacharlos."
+            subtitle={`Los de ${props.systemName} y los que no tienen consola. Marca los que ya agregaste.`}
             actions={
               <span className="draft-notes-count">
                 {pendingNotes.length} pendientes · {completedNotes.length} tachados

@@ -36,9 +36,11 @@ import {
 } from "./lib/backend.ts";
 import type { Command } from "./lib/commands.ts";
 import { archiveAdvice, cleanTitle, systemFolder } from "./lib/rom.ts";
+import { noteFitsSystem } from "./lib/notes.ts";
 import { flattenOrder, sagaOf, type GameGroup } from "./lib/sagas.ts";
 import { consoleProfile } from "./lib/consoles.ts";
 import { stepFontScale } from "./lib/settings.ts";
+import { playSound, soundAllowed } from "./lib/sounds.ts";
 import type {
   FullEntry,
   Game,
@@ -161,7 +163,9 @@ function App() {
         else localNotes();
         setNotesLoaded(true);
       })
-      .catch(() => setNotesLoaded(true));
+      // Sin marcar como cargadas: guardar ahora escribiría una lista vacía
+      // encima de la que hay en la tarjeta.
+      .catch((e) => setError(`No se pudo leer la lista de pendientes: ${e}`));
   }, [root, scannedRoot]);
 
   // La consola los cambia, no Bunko: basta con releerlos en cada escaneo.
@@ -199,6 +203,22 @@ function App() {
       current = false;
     };
   }, [root, scannedRoot, systems]);
+
+  // Clic en cualquier botón activo; los avisos tienen su propio sonido.
+  useEffect(() => {
+    if (!soundAllowed(settings.settings.sounds, "interaccion")) return;
+    const onClick = (event: MouseEvent) => {
+      const button = (event.target as Element | null)?.closest("button, [role='button']");
+      if (button && !(button as HTMLButtonElement).disabled) playSound("interaccion");
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [settings.settings.sounds]);
+
+  useEffect(() => {
+    if (notice && soundAllowed(settings.settings.sounds, "exito")) playSound("exito");
+    // Solo al aparecer un aviso nuevo, no al cambiar la preferencia.
+  }, [notice]);
 
   useEffect(() => {
     if (!notice) return;
@@ -794,7 +814,11 @@ function App() {
         <AddGameModal
           systemName={selected?.name ?? ""}
           drafts={drafts}
-          notes={notes}
+          notes={
+            selected
+              ? notes.filter((note) => noteFitsSystem(note, systemFolder(selected)))
+              : notes
+          }
           loading={loading}
           onClose={() => {
             setModal(null);
@@ -803,7 +827,12 @@ function App() {
           onChooseRoms={chooseRoms}
           onRemoveDraft={removeDraft}
           onDraftTitleChange={(id, value) => updateDraft(id, { title: value })}
-          onDraftExtractChange={(id, extract) => updateDraft(id, { extract })}
+          autoExtract={settings.settings.autoExtract}
+          onExtractAllChange={(extract) =>
+            setDrafts((current) =>
+              current.map((draft) => (draft.archive ? { ...draft, extract } : draft)),
+            )
+          }
           onDraftSearch={searchDraftCover}
           onDraftSearchAll={() =>
             void artwork.searchAllDraftCovers(drafts, updateDraft)

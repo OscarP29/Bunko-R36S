@@ -130,7 +130,8 @@
   display: grid;
   place-items: center;
   position: relative;
-  min-height: 112px;
+  align-self: start;
+  aspect-ratio: 1;
   border: 2px solid var(--line);
   background: var(--panel2);
   overflow: hidden;
@@ -282,4 +283,8 @@
   .pending-notes-modal .modal-body {
     max-height: 40vh;
   }
+}
+
+.add-game-main > .draft-archive {
+  margin: 16px 0 12px;
 }

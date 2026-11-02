@@ -1,3 +1,4 @@
+import type { SoundMode } from "./sounds.ts";
 import { readLocalJson, writeLocalJson } from "./store.ts";
 
 const SETTINGS_KEY = "r36s-manager-settings";
@@ -10,6 +11,8 @@ export type Settings = {
   fontScale: number;
   /** Extrae sin preguntar los .zip/.7z que no conviene copiar comprimidos. */
   autoExtract: boolean;
+  /** Qué sonidos suenan: todos, solo los avisos o ninguno. */
+  sounds: SoundMode;
   /** Carpeta del PC para las copias de seguridad. Vacía = Documentos\Bunko. */
   workDir: string;
 };
@@ -25,10 +28,12 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "light",
   fontScale: 1.2,
   autoExtract: false,
+  sounds: "all",
   workDir: "",
 };
 
 const THEMES: readonly ThemeMode[] = ["light", "dark", "system"];
+const SOUND_MODES: readonly SoundMode[] = ["all", "alerts", "off"];
 
 export function loadSettings(): Settings {
   const saved = readLocalJson<Partial<Settings>>(SETTINGS_KEY);
@@ -43,6 +48,9 @@ export function loadSettings(): Settings {
       typeof saved?.autoExtract === "boolean"
         ? saved.autoExtract
         : DEFAULT_SETTINGS.autoExtract,
+    sounds: SOUND_MODES.includes(saved?.sounds as SoundMode)
+      ? (saved?.sounds as SoundMode)
+      : DEFAULT_SETTINGS.sounds,
     workDir: typeof saved?.workDir === "string" ? saved.workDir : DEFAULT_SETTINGS.workDir,
   };
 }

@@ -827,8 +827,20 @@ fn read_notes(state: State<AppState>) -> Result<String, String> {
 fn write_notes(state: State<AppState>, content: String) -> Result<(), String> {
     let _disk = disk_write(&state)?;
     let root = require_root(&state)?;
-    write_atomic(&root.join(NOTES_FILE), content.as_bytes())
+    write_notes_at(&root.join(NOTES_FILE), &content)
         .map_err(|e| format!("No se pudo guardar la libreta: {e}"))
+}
+
+/// Guarda la libreta y conserva la versión anterior en `.bak`, pero solo si
+/// tenía pendientes: así vaciarla dos veces no borra también la copia.
+fn write_notes_at(path: &Path, content: &str) -> Result<(), String> {
+    let previous = fs::read_to_string(path).unwrap_or_default();
+    let had_notes = !matches!(previous.trim(), "" | "[]");
+    if had_notes && previous.trim() != content.trim() {
+        write_atomic_with_backup(path, content.as_bytes())
+    } else {
+        write_atomic(path, content.as_bytes())
+    }
 }
 
 #[tauri::command(async)]
@@ -1125,6 +1137,18 @@ mod tests {
             .filter(|entry| entry.file_name().to_string_lossy().contains(".tmp"))
             .count();
         assert_eq!(leftovers, 0);
+    }
+
+    #[test]
+    fn write_notes_no_pisa_la_copia_con_una_lista_vacia() {
+        let dir = TempDir::new("notes");
+        let path = dir.path().join(NOTES_FILE);
+        let backup = dir.path().join(format!("{NOTES_FILE}.bak"));
+        write_notes_at(&path, r#"[{"id":"1"}]"#).unwrap();
+        write_notes_at(&path, "[]").unwrap();
+        write_notes_at(&path, "[]").unwrap();
+        assert_eq!(fs::read_to_string(&backup).unwrap(), r#"[{"id":"1"}]"#);
+        assert_eq!(fs::read_to_string(&path).unwrap(), "[]");
     }
 
     #[test]

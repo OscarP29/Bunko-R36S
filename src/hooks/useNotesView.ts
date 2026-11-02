@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { noteSystem } from "../lib/notes.ts";
 import type { Note } from "../lib/types.ts";
 
 const priorityWeight = (p?: string) =>
@@ -59,7 +60,7 @@ export function useNotesView(notes: Note[], onAddNote: (note: Note) => void) {
   const availableNoteSystems = useMemo(() => {
     const set = new Set<string>();
     for (const note of notes) {
-      const system = note.system || note.text.match(/\\(([^)]+)\\)\\s*$/)?.[1]?.trim();
+      const system = noteSystem(note);
       if (system) set.add(system);
     }
     return Array.from(set).sort((a, b) =>
@@ -89,8 +90,7 @@ export function useNotesView(notes: Note[], onAddNote: (note: Note) => void) {
       if (notePriorityFilter !== "all" && note.priority !== notePriorityFilter)
         return false;
       if (noteSystemFilter !== "all") {
-        const system =
-          note.system || note.text.match(/\\(([^)]+)\\)\\s*$/)?.[1]?.trim();
+        const system = noteSystem(note);
         if (system !== noteSystemFilter) return false;
       }
       if (query) {
