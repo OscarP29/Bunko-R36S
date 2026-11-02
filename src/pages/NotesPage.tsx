@@ -8,6 +8,7 @@ import { AiListOrganizer } from "../components/AiListOrganizer.tsx";
 import { NoteCard } from "../components/NoteCard.tsx";
 import { Button } from "../components/ui/Button.tsx";
 import { Field } from "../components/ui/Field.tsx";
+import { Segmented } from "../components/ui/Segmented.tsx";
 import type { NotesView } from "../hooks/useNotesView.ts";
 import type { FullEntry, Note, System } from "../lib/types.ts";
 
@@ -181,29 +182,20 @@ export function NotesPage({
         <div className="notes-list-header">
           <h2>Tu lista</h2>
           {notes.length > 0 && (
-            <div
-              className="filter-group notes-status"
-              role="group"
-              aria-label="Filtrar por estado"
-            >
-              {(
-                [
-                  ["all", "Todos", notes.length],
-                  ["pending", "Pendientes", pendingNotes],
-                  ["done", "Conseguidos", notes.length - pendingNotes],
-                ] as const
-              ).map(([status, label, count]) => (
-                <button
-                  key={status}
-                  type="button"
-                  className={noteStatusFilter === status ? "filter-active" : ""}
-                  aria-pressed={noteStatusFilter === status}
-                  onClick={() => setNoteStatusFilter(status)}
-                >
-                  {label} <span>{count}</span>
-                </button>
-              ))}
-            </div>
+            <Segmented
+              label="Filtrar por estado"
+              value={noteStatusFilter}
+              onChange={setNoteStatusFilter}
+              options={[
+                { value: "all", label: "Todos", count: notes.length },
+                { value: "pending", label: "Pendientes", count: pendingNotes },
+                {
+                  value: "done",
+                  label: "Conseguidos",
+                  count: notes.length - pendingNotes,
+                },
+              ]}
+            />
           )}
         </div>
 

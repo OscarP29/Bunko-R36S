@@ -1,29 +1,33 @@
 /* Modal de añadir juegos y panel de pendientes. */
 
 .selected-system {
-  height: 38px;
+  flex-wrap: wrap;
+  min-height: 38px;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
   margin-bottom: 15px;
-  color: #b79efa;
+  color: var(--on-accent);
   border: 3px solid var(--line);
   border-radius: 0;
   box-shadow: 3px 3px 0 var(--line);
   background: #d5c7f7;
 }
 
+.selected-system strong,
+.selected-system span {
+  color: var(--on-accent);
+}
+
 .selected-system strong {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   text-transform: capitalize;
-  color: var(--line);
 }
 
 .selected-system span {
   margin-left: auto;
-  font-size: 9px;
-  color: #4f4b43;
+  font-size: calc(9px * var(--font-scale));
 }
 
 .add-game-modal-pair {
@@ -58,11 +62,13 @@
 }
 
 .pending-notes-modal .modal-header {
+  flex-wrap: wrap;
+  gap: 8px;
   align-items: flex-start;
 }
 
 .pending-notes-modal .modal-header h2 {
-  font-size: 20px;
+  font-size: calc(20px * var(--font-scale));
 }
 
 .pending-notes-modal .modal-header .draft-notes-count {
@@ -70,7 +76,7 @@
   padding: 5px 7px;
   border: 2px solid var(--line);
   background: var(--green);
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .pending-notes-body {
@@ -86,10 +92,25 @@
   min-width: 0;
 }
 
+.draft-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 16px 0 12px;
+  font-size: calc(14px * var(--font-scale));
+}
+
+.draft-bulk .secondary-button {
+  min-height: 40px;
+  padding: 0 12px;
+  border-width: 2px;
+  box-shadow: none;
+  font-size: calc(14px * var(--font-scale));
+}
+
 .draft-list {
-  max-height: 260px;
-  overflow-y: auto;
-  padding-right: 4px;
   display: grid;
   gap: 12px;
 }
@@ -102,7 +123,7 @@
   padding: 12px;
   border: 3px solid var(--line);
   background: var(--panel);
-  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.8);
+  box-shadow: 4px 4px 0 var(--line-soft);
 }
 
 .draft-cover {
@@ -136,8 +157,8 @@
 .draft-cover-actions .text-button {
   padding: 4px 8px;
   border: 1.5px solid var(--line);
-  background: rgba(255, 253, 247, 0.95);
-  font-size: 10px;
+  background: var(--panel);
+  font-size: calc(10px * var(--font-scale));
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
@@ -150,7 +171,7 @@
 
 .draft-file {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   letter-spacing: 0.02em;
   word-break: break-all;
 }
@@ -159,15 +180,15 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #6b6453;
-  font-size: 11px;
+  color: var(--muted);
+  font-size: calc(11px * var(--font-scale));
 }
 
 .draft-error {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #7f1d1d;
+  color: var(--error);
 }
 
 .remove-draft {
@@ -180,7 +201,7 @@
 }
 
 .pending-notes-modal .draft-notes-count {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .pending-notes-modal .draft-note {
@@ -189,7 +210,7 @@
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
-  border: 2.5px solid rgba(17, 17, 17, 0.8);
+  border: 2.5px solid var(--line-soft);
   background: var(--panel);
   text-align: left;
   cursor: pointer;
@@ -201,9 +222,9 @@
 }
 
 .pending-notes-modal .draft-note.done {
-  background: #e8f2e8;
+  background: var(--success-bg);
   text-decoration: line-through;
-  color: #4a5a4a;
+  color: var(--muted);
 }
 
 .pending-notes-modal .draft-note .note-check {

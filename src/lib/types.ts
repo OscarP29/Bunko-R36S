@@ -28,7 +28,7 @@ export type Note = {
   notes?: string;
   suggestedFileName?: string;
 };
-export type Tab = "library" | "notes";
+export type Tab = "library" | "notes" | "settings";
 export type Filter = "all" | "missing";
 export type SortBy = "name" | "file";
 export type ViewMode = "grid" | "list";

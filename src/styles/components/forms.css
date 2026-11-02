@@ -1,16 +1,16 @@
 /* Campos, selector segmentado y zonas de selección (ver Field.tsx). */
 
 .filter-group button > span:last-child:not(.mini-dot) {
-  font: 9px var(--mono);
-  color: #777987;
-  background: #1a1b23;
+  font: calc(9px * var(--font-scale)) var(--mono);
+  color: var(--muted);
+  background: var(--panel2);
   padding: 2px 4px;
   border-radius: 3px;
 }
 
 .filter-group button.filter-active > span:last-child:not(.mini-dot) {
-  color: #c2b2fa;
-  background: #312b3e;
+  color: var(--accent-text);
+  background: var(--panel2);
 }
 
 .mini-dot {
@@ -29,63 +29,63 @@
 }
 
 .text-field::placeholder {
-  color: #686a75;
+  color: var(--muted);
 }
 
 .image-drop-large {
   margin: 10px 0 12px;
-  height: 49px;
+  min-height: 49px;
 }
 
 .filter-group {
-  height: 33px;
+  min-height: 33px;
   display: flex;
   padding: 2px;
   border: 3px solid var(--line);
   border-radius: 0;
-  background: #e7e1d4;
+  background: var(--panel2);
 }
 
 .filter-group button {
   border: 0;
   background: none;
   padding: 0 9px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   display: flex;
   align-items: center;
   gap: 5px;
   font-weight: 700;
   border-radius: 0;
-  color: #37342d;
+  color: var(--muted);
 }
 
 .filter-group button.filter-active {
   background: #7041d4;
-  color: #fff;
+  color: var(--on-purple);
 }
 
 .field-label {
   display: block;
   margin-bottom: 7px;
   letter-spacing: .1em;
-  font: 11px var(--mono);
-  color: #4f4b43;
+  font: calc(11px * var(--font-scale)) var(--mono);
+  color: var(--muted);
 }
 
 .file-picker {
   width: 100%;
-  height: 39px;
+  min-height: 39px;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 10px;
   text-align: left;
   margin-bottom: 15px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   border: 3px dashed var(--line);
   border-radius: 0;
   background: var(--panel);
-  color: #38352f;
+  color: var(--muted);
 }
 
 .image-drop {
@@ -95,30 +95,30 @@
   gap: 8px;
   padding: 0 10px;
   text-align: left;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   border: 3px dashed var(--line);
   border-radius: 0;
   background: var(--panel);
-  color: #38352f;
+  color: var(--muted);
 }
 
 .file-picker:hover,
 .image-drop:hover {
   background: #e6dcff;
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .text-field {
   width: 100%;
-  height: 36px;
+  min-height: 36px;
   padding: 0 10px;
   outline: none;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   margin-bottom: 14px;
   border: 3px solid var(--line);
   border-radius: 0;
   background: var(--panel);
-  color: var(--line);
+  color: var(--text);
   box-shadow: 3px 3px 0 var(--line);
 }
 
@@ -136,17 +136,51 @@
 .field .field-label {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
 }
 
 .field .text-field {
-  height: 40px;
+  min-height: 40px;
   margin: 0;
-  font-size: 14px;
+  font-size: calc(14px * var(--font-scale));
   border-width: 2px;
   box-shadow: none;
 }
 
 .field .text-field::placeholder {
   color: var(--muted);
+}
+
+.segmented {
+  flex-wrap: wrap;
+  height: auto;
+  gap: 4px;
+}
+
+.segmented button {
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: calc(14px * var(--font-scale));
+}
+
+.segmented button > span:last-child:not(.mini-dot) {
+  min-width: 22px;
+  padding: 2px 4px;
+  border: 1.5px solid var(--line);
+  border-radius: 0;
+  background: var(--panel2);
+  color: var(--text);
+  font: 500 calc(12px * var(--font-scale)) var(--mono);
+  text-align: center;
+}
+
+.segmented button.filter-active > span:last-child:not(.mini-dot) {
+  min-width: 22px;
+  padding: 2px 4px;
+  border: 1.5px solid var(--line);
+  border-radius: 0;
+  color: var(--on-accent);
+  font: 500 calc(12px * var(--font-scale)) var(--mono);
+  text-align: center;
+  background: var(--green);
 }

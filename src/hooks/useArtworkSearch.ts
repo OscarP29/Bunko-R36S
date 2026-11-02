@@ -35,6 +35,25 @@ type UseArtworkSearchOptions = {
   onBatchFinished: (system: System) => Promise<void>;
 };
 
+const SEARCH_WORKERS = 6;
+
+/** Ejecuta `task` sobre `items` con concurrencia limitada. */
+async function runConcurrently<T>(
+  items: T[],
+  task: (item: T) => Promise<void>,
+  shouldStop: () => boolean = () => false,
+) {
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: SEARCH_WORKERS }, async () => {
+      while (next < items.length) {
+        if (shouldStop()) return;
+        await task(items[next++]);
+      }
+    }),
+  );
+}
+
 /** Búsqueda de carátulas: modal de un juego, juegos nuevos y faltantes en bloque. */
 export function useArtworkSearch({
   selected,
@@ -160,12 +179,21 @@ export function useArtworkSearch({
     }
   }
 
-  async function searchDraftCover(
+  async function loadDraftIndex(libretroSystem: string) {
+    try {
+      return await loadArtworkIndex(libretroSystem, setArtworkWarning);
+    } catch (indexError) {
+      setArtworkWarning(String(indexError));
+      return [];
+    }
+  }
+
+  async function coverForDraft(
     draft: NewGameDraft,
+    libretroSystem: string,
+    files: ArtworkEntry[],
     updateDraft: (patch: Partial<NewGameDraft>) => void,
   ) {
-    if (!selected) return;
-    updateDraft({ searching: true, error: "", imageStatus: "searching" });
     const showCover = ({ blob, bytes }: ArtworkFile) =>
       updateDraft({
         imageBytes: bytes,
@@ -175,14 +203,6 @@ export function useArtworkSearch({
         error: "",
       });
     try {
-      const libretroSystem = libretroSystemOf(selected);
-      let files: ArtworkEntry[] = [];
-      try {
-        files = await loadArtworkIndex(libretroSystem, setArtworkWarning);
-      } catch (indexError) {
-        setArtworkWarning(String(indexError));
-      }
-
       const original = stem(draft.fileName);
       const matches = await searchArtworkMatches(
         libretroSystem,
@@ -226,6 +246,43 @@ export function useArtworkSearch({
     }
   }
 
+  async function searchDraftCover(
+    draft: NewGameDraft,
+    updateDraft: (patch: Partial<NewGameDraft>) => void,
+  ) {
+    if (!selected) return;
+    updateDraft({ searching: true, error: "", imageStatus: "searching" });
+    const libretroSystem = libretroSystemOf(selected);
+    const files = await loadDraftIndex(libretroSystem);
+    await coverForDraft(draft, libretroSystem, files, updateDraft);
+  }
+
+  /** Busca a la vez los juegos sin carátula; el índice se pide una sola vez. */
+  async function searchAllDraftCovers(
+    drafts: NewGameDraft[],
+    updateDraft: (id: string, patch: Partial<NewGameDraft>) => void,
+  ) {
+    if (!selected) return;
+    const pending = drafts.filter(
+      (draft) => !draft.imageBytes && !draft.searching,
+    );
+    if (!pending.length) return;
+    for (const draft of pending) {
+      updateDraft(draft.id, {
+        searching: true,
+        error: "",
+        imageStatus: "searching",
+      });
+    }
+    const libretroSystem = libretroSystemOf(selected);
+    const files = await loadDraftIndex(libretroSystem);
+    await runConcurrently(pending, (draft) =>
+      coverForDraft(draft, libretroSystem, files, (patch) =>
+        updateDraft(draft.id, patch),
+      ),
+    );
+  }
+
   async function searchMissingCovers() {
     if (!selected) return;
     batchCancel.current = false;
@@ -243,11 +300,9 @@ export function useArtworkSearch({
       // sin índice se intenta la ruta exacta juego por juego
     }
 
-    let next = 0;
-    const workers = Array.from({ length: 6 }, async () => {
-      while (next < missing.length) {
-        if (batchCancel.current) return;
-        const game = missing[next++];
+    const work = runConcurrently(
+      missing,
+      async (game) => {
         try {
           const target = files.length
             ? pickBatchMatch(files, game.fileName, findAlias(game.fileName))
@@ -267,11 +322,12 @@ export function useArtworkSearch({
         setBatchProgress((value) =>
           value ? { ...value, done: value.done + 1 } : value,
         );
-      }
-    });
+      },
+      () => batchCancel.current,
+    );
 
     try {
-      await Promise.all(workers);
+      await work;
       await onBatchFinished(selected);
     } finally {
       setBatchProgress(null);
@@ -306,6 +362,7 @@ export function useArtworkSearch({
     searchArtwork,
     chooseArtwork,
     searchDraftCover,
+    searchAllDraftCovers,
     searchMissingCovers,
     markNoCover,
     clearNoCover,

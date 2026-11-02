@@ -6,7 +6,12 @@
   padding: 3px 8px;
   border: 1.5px solid var(--line);
   background: var(--panel2);
-  font-size: 11px;
+  color: var(--on-accent);
+  font-size: calc(11px * var(--font-scale));
+}
+
+.chip.neutral {
+  color: var(--text);
 }
 
 .chip.caps {
@@ -40,6 +45,7 @@
 }
 
 .chip.folder {
+  color: var(--text);
   background: var(--bg);
   font-family: var(--mono);
 }

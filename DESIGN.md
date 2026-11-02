@@ -14,6 +14,10 @@ negros gruesos, esquinas cuadradas, sombras sólidas desplazadas sin difuminar y
 acentos morados con verde lima para acciones positivas y contadores. Se siente
 como un cartucho físico: contundente, legible, sin adornos suaves.
 
+Tiene dos temas: el claro descrito arriba y un oscuro morado (fondo `#1c1433`,
+tarjetas `#2a1f4d`, contornos lila `#b99aff`, texto crema y acentos lima). El
+oscuro conserva los contornos y las sombras solidas: cambia los tokens, no el estilo.
+
 Principios:
 - **Bordes y sombras sólidas, nunca difuminadas.** La profundidad se comunica
   con desplazamiento (`4px 4px 0 #111`), no con blur.
@@ -49,7 +53,26 @@ Principios:
 | Exito | `#9fed5f` / `#e8f2e8` | Fondo de estado completado |
 | Superficie sidebar | `#e9e4d7` | Fondo de la barra lateral |
 
+Tokens por funcion, redefinidos en `:root[data-theme="dark"]` (`tokens.css`):
+
+| Token | Uso |
+|---|---|
+| `--text` | Texto principal. Nunca uses `--line` para texto |
+| `--accent-text` | Texto morado sobre superficies |
+| `--on-accent` | Texto sobre acentos lima y pastel, oscuro en ambos temas |
+| `--on-purple` | Texto sobre fondo morado |
+| `--error`, `--warning`, `--success` | Texto de estado |
+| `--line-soft` | Bordes y sombras translucidos |
+| `--modal`, `--sidebar`, `--success-bg` | Superficies especificas |
+
+Todo texto sobre un acento lleva `--on-accent`. Si un elemento hereda el color,
+fijalo en el propio elemento: en oscuro heredaria crema y no se leeria.
+
 ### Tipografia
+
+Todo tamano de letra se escribe `calc(Npx * var(--font-scale))`, nunca en px sueltos,
+para respetar el tamano elegido en Configuracion (1 / 1.2 / 1.35 / 1.5). Los
+contenedores con texto usan `min-height`, no `height`, para poder crecer.
 
 Familias (Google Fonts): `DM Sans` (cuerpo, 400-700), `Manrope` (`--display`, 400-800), `DM Mono` (`--mono`, 400-500).
 
@@ -101,7 +124,7 @@ Sombras solidas (sin blur, salvo decorativas del fondo): `2px 2px`, `3px 3px`,
 - Prohibido `!important`: si una regla no gana, ajusta su selector o su orden.
 - Usa `var(--token)` en vez de repetir un color que ya es token.
 - Componentes compartidos en `src/components/ui/`: `Button`, `IconButton`,
-  `Field`, `Chip`, `ModalBackdrop` y `ModalHeader`. No escribas a mano
+  `Field`, `Chip`, `Segmented`, `ModalBackdrop` y `ModalHeader`. No escribas a mano
   `className="primary-button"` ni la cabecera de un modal.
 
 ### Boton
@@ -282,6 +305,7 @@ Las acciones de caratula van DEBAJO de la imagen, nunca superpuestas.
 13. La accion principal esta a la derecha y siempre visible?
 14. Se usan solo tokens existentes (o se marcan como "Propuesto")?
 15. Se aplico la escala de espaciado 4/8px?
+16. Se ve y se lee bien en tema oscuro y con letra Muy grande?
 
 ---
 
@@ -321,5 +345,5 @@ Las acciones de caratula van DEBAJO de la imagen, nunca superpuestas.
 5. Si una regla de este documento choca con lo pedido, pregunta antes de
    implementar.
 6. Marca como "Propuesto" cualquier token que no exista aun.
-7. No cambies la identidad neo-brutalista ni la paleta.
+7. No cambies la identidad neo-brutalista ni la paleta de ninguno de los dos temas.
 8. Verifica el resultado a 380px de ancho.

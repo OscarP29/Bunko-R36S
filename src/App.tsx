@@ -10,6 +10,7 @@ import { Topbar } from "./components/Topbar.tsx";
 import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
 import { useNotesView } from "./hooks/useNotesView.ts";
+import { useSettings } from "./hooks/useSettings.ts";
 import {
   addGames,
   listGames,
@@ -32,6 +33,7 @@ import type {
 } from "./lib/types.ts";
 import { LibraryPage } from "./pages/LibraryPage.tsx";
 import { NotesPage } from "./pages/NotesPage.tsx";
+import { SettingsPage } from "./pages/SettingsPage.tsx";
 
 const ROOT_KEY = "r36s-manager-root";
 const NOTES_KEY = "r36s-manager-notes";
@@ -56,6 +58,7 @@ function App() {
   const notesRoot = useRef("");
   const libraryView = useLibraryView(games);
   const notesView = useNotesView(notes, addNote);
+  const settings = useSettings();
   const artwork = useArtworkSearch({
     selected,
     games,
@@ -522,6 +525,7 @@ function App() {
             onRemoveGame={removeGameFromCatalog}
           />
         )}
+        {activeTab === "settings" && <SettingsPage {...settings} />}
         {activeTab === "notes" && (
           <NotesPage
             view={notesView}
@@ -552,6 +556,9 @@ function App() {
           onRemoveDraft={removeDraft}
           onDraftTitleChange={(id, value) => updateDraft(id, { title: value })}
           onDraftSearch={searchDraftCover}
+          onDraftSearchAll={() =>
+            void artwork.searchAllDraftCovers(drafts, updateDraft)
+          }
           onDraftSelectImage={setDraftImage}
           onDraftClearImage={clearDraftImage}
           onToggleNote={toggleNote}

@@ -34,7 +34,9 @@ export function Topbar({
           <strong>
             {activeTab === "notes"
               ? "Pendientes"
-              : systemName || "Biblioteca"}
+              : activeTab === "settings"
+                ? "Configuración"
+                : systemName || "Biblioteca"}
           </strong>
         </div>
         <div className="top-actions">

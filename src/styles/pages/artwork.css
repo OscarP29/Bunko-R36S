@@ -12,13 +12,13 @@
 }
 
 .target-game > div:last-child > span {
-  font: 8px var(--mono);
-  color: #787985;
+  font: calc(8px * var(--font-scale)) var(--mono);
+  color: var(--muted);
   letter-spacing: .04em;
 }
 
 .target-game strong {
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
 }
 
 .artwork-search-card > div:nth-child(2) {
@@ -28,12 +28,12 @@
 }
 
 .artwork-search-card strong {
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .artwork-search-card > div:nth-child(2) > span {
-  font: 8px var(--mono);
-  color: #787985;
+  font: calc(8px * var(--font-scale)) var(--mono);
+  color: var(--muted);
   font-family: 'DM Sans',sans-serif;
   letter-spacing: 0;
 }
@@ -54,12 +54,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .artwork-large-preview > div > span {
-  font-size: 9px;
-  color: #858691;
+  font-size: calc(9px * var(--font-scale));
+  color: var(--muted);
   line-height: 1.6;
 }
 
@@ -83,8 +83,8 @@
 
 .candidate-list button small {
   flex: none;
-  color: #a899cd;
-  font: 9px var(--mono);
+  color: var(--muted);
+  font: calc(9px * var(--font-scale)) var(--mono);
 }
 
 .target-game {
@@ -131,7 +131,7 @@
   border: 2px solid var(--line);
   border-radius: 0;
   background: #b99aff;
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .target-cover {
@@ -143,7 +143,7 @@
   border: 2px solid var(--line);
   border-radius: 0;
   background: #b99aff;
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .found-badge {
@@ -151,11 +151,11 @@
   align-items: center;
   gap: 3px;
   padding: 3px 5px;
-  font: 8px var(--mono);
+  font: calc(8px * var(--font-scale)) var(--mono);
   border: 2px solid var(--line);
   border-radius: 0;
   background: var(--green);
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .candidate-list button {
@@ -165,11 +165,11 @@
   gap: 10px;
   text-align: left;
   padding: 8px 9px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   border: 3px solid var(--line);
   border-radius: 0;
   background: var(--panel);
-  color: var(--line);
+  color: var(--text);
   box-shadow: 2px 2px 0 var(--line);
 }
 
@@ -180,5 +180,5 @@
 
 .no-cover-button {
   margin: 10px 0 0 auto;
-  color: #5428b3;
+  color: var(--accent-text);
 }

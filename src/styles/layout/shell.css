@@ -5,7 +5,7 @@
 }
 
 .breadcrumbs svg {
-  color: #4d4e58;
+  color: var(--muted);
 }
 
 .top-actions {
@@ -61,58 +61,59 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 11px;
-  color: #55534c;
+  font-size: calc(11px * var(--font-scale));
+  color: var(--muted);
 }
 
 .drive-indicator {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
-  color: #55534c;
+  font-size: calc(10px * var(--font-scale));
+  color: var(--muted);
 }
 
 .breadcrumbs strong {
   font-weight: 500;
-  color: var(--line);
+  color: var(--text);
 }
 
 .avatar {
-  height: 26px;
-  width: 26px;
+  line-height: 1;
+  height: calc(26px * var(--font-scale));
+  width: calc(26px * var(--font-scale));
   display: grid;
   place-items: center;
-  font: 700 11px var(--display);
+  font: 700 calc(11px * var(--font-scale)) var(--display);
   border: 3px solid var(--line);
   border-radius: 0;
   background: #a9eb69;
-  color: var(--line);
+  color: var(--on-accent);
 }
 
 .eyebrow {
   display: flex;
   align-items: center;
   gap: 10px;
-  font: 500 9px var(--mono);
+  font: 500 calc(9px * var(--font-scale)) var(--mono);
   letter-spacing: .14em;
-  color: #592cb8;
+  color: var(--accent-text);
 }
 
 .page-heading h1 {
-  font: 700 35px/1.22 var(--display);
+  font: 700 calc(35px * var(--font-scale))/1.22 var(--display);
   letter-spacing: -.045em;
   margin: 10px 0 5px;
-  color: var(--line);
+  color: var(--text);
 }
 
 .heading-period {
-  color: #6235c6;
+  color: var(--accent-text);
 }
 
 .page-heading p {
   margin: 0;
-  font-size: 12px;
+  font-size: calc(12px * var(--font-scale));
   color: var(--muted);
 }
 

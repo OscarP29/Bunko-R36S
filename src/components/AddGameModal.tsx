@@ -25,6 +25,7 @@ type AddGameModalProps = {
   onRemoveDraft: (id: string) => void;
   onDraftTitleChange: (id: string, value: string) => void;
   onDraftSearch: (id: string) => void;
+  onDraftSearchAll: () => void;
   onDraftSelectImage: (id: string, file: File) => void;
   onDraftClearImage: (id: string) => void;
   onToggleNote: (id: string) => void;
@@ -35,6 +36,10 @@ export function AddGameModal(props: AddGameModalProps) {
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const pendingNotes = props.notes.filter((note) => !note.done);
   const completedNotes = props.notes.filter((note) => note.done);
+  const draftsSearching = props.drafts.filter((draft) => draft.searching).length;
+  const draftsWithoutCover = props.drafts.filter(
+    (draft) => !draft.imageBytes,
+  ).length;
   return (
     <ModalBackdrop onClose={props.onClose}>
       <div className={`add-game-modal-pair ${props.notes.length ? "has-pending-notes" : ""}`}>
@@ -66,6 +71,29 @@ export function AddGameModal(props: AddGameModalProps) {
                   : "Selecciona uno o varios archivos de juego"}
               </span>
             </button>
+
+          {props.drafts.length > 1 && (
+            <div className="draft-bulk">
+              <span role="status">
+                {draftsSearching
+                  ? `Buscando carátulas: quedan ${draftsSearching}`
+                  : draftsWithoutCover
+                    ? `${draftsWithoutCover} de ${props.drafts.length} sin carátula`
+                    : "Todos los juegos tienen carátula"}
+              </span>
+              <Button
+                onClick={props.onDraftSearchAll}
+                disabled={draftsSearching > 0 || !draftsWithoutCover}
+              >
+                {draftsSearching ? (
+                  <LoaderCircle size={14} className="spin" />
+                ) : (
+                  <Sparkles size={14} />
+                )}
+                Buscar todas las carátulas
+              </Button>
+            </div>
+          )}
 
           {props.drafts.length > 0 && (
             <div className="draft-list">
@@ -189,7 +217,7 @@ export function AddGameModal(props: AddGameModalProps) {
           <Button
             variant="primary"
             onClick={props.onSave}
-            disabled={!props.drafts.length || props.loading}
+            disabled={!props.drafts.length || props.loading || draftsSearching > 0}
           >
             {props.loading ? (
               <LoaderCircle size={15} className="spin" />

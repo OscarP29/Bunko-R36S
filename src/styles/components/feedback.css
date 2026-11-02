@@ -9,7 +9,7 @@
   color: #edb6b6;
   padding: 10px 12px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   margin-bottom: 14px;
 }
 
@@ -31,7 +31,7 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  color: #777986;
+  color: var(--muted);
   gap: 8px;
   text-align: center;
 }
@@ -43,18 +43,18 @@
   border-radius: 9px;
   display: grid;
   place-items: center;
-  color: #a38bdc;
-  background: #17151e;
+  color: var(--accent-text);
+  background: var(--panel2);
   margin-bottom: 3px;
 }
 
 .empty-state strong {
-  font: 600 13px var(--display);
-  color: #dbd9e2;
+  font: 600 calc(13px * var(--font-scale)) var(--display);
+  color: var(--muted);
 }
 
 .empty-state span {
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
 }
 
 .no-systems > div {
@@ -64,7 +64,7 @@
 }
 
 .toast svg {
-  color: #72c999;
+  color: var(--success);
 }
 
 .batch-progress > span {
@@ -80,17 +80,17 @@
   gap: 12px;
   border: 3px dashed var(--line);
   border-radius: 0;
-  color: #542ab0;
+  color: var(--accent-text);
 }
 
 .no-systems strong {
-  font: 600 12px var(--display);
-  color: var(--line);
+  font: 600 calc(12px * var(--font-scale)) var(--display);
+  color: var(--text);
 }
 
 .no-systems span {
-  font-size: 10px;
-  color: #55534b;
+  font-size: calc(10px * var(--font-scale));
+  color: var(--muted);
 }
 
 .toast {
@@ -102,11 +102,11 @@
   align-items: center;
   gap: 8px;
   padding: 11px 14px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   border: 3px solid var(--line);
   border-radius: 0;
   background: #a9ed69;
-  color: var(--line);
+  color: var(--on-accent);
   font-weight: 800;
   box-shadow: 5px 5px 0 var(--line);
 }
@@ -115,8 +115,8 @@
   display: grid;
   gap: 7px;
   margin: -5px 0 15px;
-  font-size: 10px;
-  color: #3f286c;
+  font-size: calc(10px * var(--font-scale));
+  color: var(--accent-text);
 }
 
 .batch-progress > div {
@@ -140,7 +140,7 @@
   align-items: center;
   gap: 6px;
   margin: -6px 0 12px;
-  color: #d4a877;
-  font-size: 9px;
+  color: var(--warning);
+  font-size: calc(9px * var(--font-scale));
   margin-top: 8px;
 }

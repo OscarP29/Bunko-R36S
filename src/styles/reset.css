@@ -25,5 +25,5 @@ body {
   min-width: 1050px;
   min-height: 100vh;
   background: var(--bg);
-  color: #171717;
+  color: var(--text);
 }

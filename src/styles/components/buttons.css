@@ -6,15 +6,15 @@
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: #9698a3;
+  color: var(--muted);
   display: grid;
   place-items: center;
 }
 
 .icon-button:hover {
   border-color: #30313c;
-  background: #171821;
-  color: #efedf4;
+  background: var(--panel2);
+  color: var(--on-purple);
 }
 
 .icon-button:disabled {
@@ -42,9 +42,9 @@
 }
 
 .primary-button {
-  height: 35px;
+  min-height: 35px;
   padding: 0 13px;
-  font-size: 11px;
+  font-size: calc(11px * var(--font-scale));
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -53,7 +53,7 @@
   border: 3px solid var(--line);
   border-radius: 0;
   background: var(--green);
-  color: var(--line);
+  color: var(--on-accent);
   font-weight: 800;
   box-shadow: 4px 4px 0 var(--line);
 }
@@ -71,18 +71,18 @@
   justify-content: center;
   gap: 6px;
   padding: 7px 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--font-scale));
   border: 3px solid var(--line);
   border-radius: 0;
   background: var(--panel);
-  color: var(--line);
+  color: var(--text);
   font-weight: 800;
   box-shadow: 3px 3px 0 var(--line);
 }
 
 .secondary-button:hover:not(:disabled) {
   background: #d9c9ff;
-  color: var(--line);
+  color: var(--on-accent);
   transform: translate(-1px,-1px);
   box-shadow: 4px 4px 0 var(--line);
 }
@@ -93,7 +93,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: calc(9px * var(--font-scale));
   padding: 2px 0;
-  color: #5529b4;
+  color: var(--accent-text);
 }

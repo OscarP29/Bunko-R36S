@@ -4,6 +4,7 @@ import {
   Gamepad2,
   HardDrive,
   ListTodo,
+  Settings,
   LogOut,
   LoaderCircle,
   SlidersHorizontal,
@@ -70,6 +71,13 @@ export function Sidebar({
           <ListTodo size={17} />
           <span>Lista de pendientes</span>
           <span className="nav-count">{pendingNotes}</span>
+        </button>
+        <button
+          className={`nav-item ${activeTab === "settings" ? "active" : ""} `}
+          onClick={() => onTabChange("settings")}
+        >
+          <Settings size={17} />
+          <span>Configuración</span>
         </button>
 
         <div className="side-section">
