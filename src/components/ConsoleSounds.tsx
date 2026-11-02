@@ -85,6 +85,7 @@ export function ConsoleSounds({ enabled, cardId, workDir, disabledReason }: Cons
                   </div>
                   <div className="settings-actions">
                     <IconButton
+                      className="sound-button is-play"
                       label={isPlaying ? `Parar ${label}` : `Escuchar ${label}`}
                       onClick={() => void sounds.play(sound.slot)}
                       disabled={!sound.exists || busy}
@@ -93,6 +94,7 @@ export function ConsoleSounds({ enabled, cardId, workDir, disabledReason }: Cons
                     </IconButton>
                     {sound.customized && (
                       <IconButton
+                        className="sound-button is-restore"
                         label={`Restaurar el original de ${label}`}
                         onClick={() => void sounds.restore(sound.slot)}
                         disabled={sounds.busy !== null}

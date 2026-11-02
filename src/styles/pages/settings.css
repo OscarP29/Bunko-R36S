@@ -4,6 +4,10 @@
   max-width: 900px;
 }
 
+.settings-tabs {
+  margin-bottom: 24px;
+}
+
 .settings-card {
   display: grid;
   gap: 16px;
@@ -126,4 +130,39 @@
   width: min(320px, 100%);
   margin: 0;
   font-size: calc(14px * var(--font-scale));
+}
+
+/* Escuchar (verde) y restaurar (morado) un sonido de la consola. */
+.sound-button {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.sound-button.is-play {
+  background: var(--green);
+  color: var(--on-accent);
+}
+
+.sound-button.is-restore {
+  background: var(--purple);
+  color: var(--on-purple);
+}
+
+.sound-button:hover:not(:disabled) {
+  border-color: var(--line);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--line);
+}
+
+.sound-button.is-play:hover:not(:disabled) {
+  background: var(--green);
+  color: var(--on-accent);
+}
+
+.sound-button.is-restore:hover:not(:disabled) {
+  background: var(--purple);
+  color: var(--on-purple);
 }
