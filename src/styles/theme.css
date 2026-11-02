@@ -599,6 +599,12 @@ body {
   cursor: not-allowed;
 }
 
+.main-area {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .ai-organizer {
   display: grid;
   gap: 16px;
@@ -1263,6 +1269,23 @@ body {
   transition: transform 0.15s ease;
 }
 
+.notes-content.notes-drawer {
+  position: fixed;
+  top: 61px;
+  right: 0;
+  width: min(460px, 92vw);
+  height: calc(100vh - 61px);
+  max-height: calc(100vh - 61px);
+  overflow-y: auto;
+  z-index: 15;
+  background: #f5f1e8;
+  border-left: 4px solid #111;
+  box-shadow: -8px 0 0 rgba(17, 17, 17, 0.85);
+  padding: 24px 20px 40px;
+  max-width: none;
+  margin: 0;
+}
+
 /* ===== Responsive móvil ===== */
 @media (max-width: 640px) {
   .ai-game-top {
@@ -1303,6 +1326,23 @@ body {
 
 .modal-wide {
   width: min(900px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-wide .modal-body {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.draft-list {
+  display: grid;
+  gap: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .draft-list {
@@ -1394,8 +1434,13 @@ body {
   display: grid;
   gap: 10px;
   padding: 14px;
+  margin-top: 16px;
   border: 2px dashed rgba(17, 17, 17, 0.45);
   background: rgba(121, 76, 226, 0.04);
+}
+
+.inline-info {
+  margin-top: 8px;
 }
 
 .draft-notes-list {

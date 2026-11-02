@@ -240,28 +240,28 @@ export function AddGameModal(props: AddGameModalProps) {
               empezar. Puedes añadir varios a la vez.
             </div>
           )}
+        </div>
 
-          <div className="modal-footer">
-            <span>
-              <CheckCircle2 size={14} />{" "}
-              {props.drafts.length
-                ? `${props.drafts.length} juego(s) se copiarán a la microSD`
-                : "Selecciona archivos para continuar"}
-            </span>
-            <button
-              className="primary-button"
-              onClick={props.onSave}
-              disabled={!props.drafts.length || props.loading}
-            >
-              {props.loading ? (
-                <LoaderCircle size={15} className="spin" />
-              ) : (
-                <Plus size={16} />
-              )}{" "}
-              Añadir {props.drafts.length ? props.drafts.length : ""} juego
-              {props.drafts.length === 1 ? "" : "s"}
-            </button>
-          </div>
+        <div className="modal-footer">
+          <span>
+            <CheckCircle2 size={14} />{" "}
+            {props.drafts.length
+              ? `${props.drafts.length} juego(s) se copiarán a la microSD`
+              : "Selecciona archivos para continuar"}
+          </span>
+          <button
+            className="primary-button"
+            onClick={props.onSave}
+            disabled={!props.drafts.length || props.loading}
+          >
+            {props.loading ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Plus size={16} />
+            )}{" "}
+            Añadir {props.drafts.length ? props.drafts.length : ""} juego
+            {props.drafts.length === 1 ? "" : "s"}
+          </button>
         </div>
       </section>
     </div>

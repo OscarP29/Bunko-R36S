@@ -1358,7 +1358,7 @@ function App() {
           </div>
         </header>
 
-        {activeTab === "library" ? (
+        {true && (
           <div className="content">
             {!root ? (
               <section className="welcome-card">
@@ -1608,8 +1608,9 @@ function App() {
               </>
             )}
           </div>
-        ) : (
-          <div className="content notes-content">
+        )}
+        {activeTab === "notes" && (
+          <div className="content notes-content notes-drawer">
             <section className="page-heading">
               <div>
                 <div className="eyebrow">
@@ -1623,6 +1624,13 @@ function App() {
                   y márcalos cuando ya estén en la consola.
                 </p>
               </div>
+              <button
+                className="icon-button"
+                aria-label="Cerrar lista de pendientes"
+                onClick={() => setActiveTab("library")}
+              >
+                <X size={17} />
+              </button>
               <div className="note-progress">
                 <span>
                   {notes.filter((note) => note.done).length}/{notes.length}{" "}
