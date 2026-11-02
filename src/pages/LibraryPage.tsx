@@ -79,6 +79,7 @@ type LibraryPageProps = {
   onEditGame: (game: Game) => void;
   onOrganize: () => void;
   onRemoveGame: (game: Game) => void;
+  onReplaceGame: (game: Game) => void;
 };
 
 export function LibraryPage({
@@ -102,6 +103,7 @@ export function LibraryPage({
   onEditGame,
   onOrganize,
   onRemoveGame,
+  onReplaceGame,
 }: LibraryPageProps) {
   const {
     search,
@@ -377,6 +379,7 @@ export function LibraryPage({
                         onEdit={() => onEditGame(game)}
                         favorite={isFavorite(game)}
                         onRemove={() => onRemoveGame(game)}
+                        onReplace={() => onReplaceGame(game)}
                         markedNoCover={markedNoCover.includes(game.fileName)}
                       />
                     ))}

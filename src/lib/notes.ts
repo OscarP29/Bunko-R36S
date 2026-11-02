@@ -20,3 +20,57 @@ export function noteFitsSystem(note: Note, folder: string) {
     (candidate) => key(candidate) === key(folder) || guessLibretroSystem(candidate) === target,
   );
 }
+
+/** Categorías sugeridas al escribir a mano, además de las que ya usa la lista. */
+export const DEFAULT_NOTE_CATEGORIES = [
+  "Acción",
+  "Arcade",
+  "Aventura",
+  "Beat 'em up",
+  "Carreras",
+  "Deportes",
+  "Estrategia",
+  "Lucha",
+  "Metroidvania",
+  "Musical",
+  "Party",
+  "Plataformas",
+  "Puzle",
+  "Reemplazar",
+  "RPG",
+  "JRPG",
+  "Rol táctico",
+  "Shoot 'em up",
+  "Shooter",
+  "Sigilo",
+  "Simulación",
+  "Survival horror",
+  "Run and gun",
+  "Roguelike",
+  "Visual novel",
+];
+
+const titleKey = (text: string) =>
+  text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/**
+ * Títulos de juego que contienen `query`, sacados de los nombres de Libretro
+ * sin etiquetas de región ni versión: «Chrono Trigger (USA)» → «Chrono Trigger».
+ */
+export function gameTitleSuggestions(names: string[], query: string, limit = 40): string[] {
+  const needle = titleKey(query);
+  if (needle.length < 2) return [];
+  const seen = new Set<string>();
+  const starts: string[] = [];
+  const contains: string[] = [];
+  for (const name of names) {
+    const title = name.replace(/\s*[([][^)\]]*[)\]]/g, "").trim();
+    const key = titleKey(title);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    if (key.startsWith(needle)) starts.push(title);
+    else if (key.includes(needle)) contains.push(title);
+  }
+  const byName = (a: string, b: string) => a.localeCompare(b, "es", { sensitivity: "base" });
+  return [...starts.sort(byName), ...contains.sort(byName)].slice(0, limit);
+}

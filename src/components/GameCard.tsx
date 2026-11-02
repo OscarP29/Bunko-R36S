@@ -1,6 +1,8 @@
-import { Check, Gamepad2, Image as ImageIcon, Pencil, Star, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Check, Gamepad2, Image as ImageIcon, ListPlus, Pencil, Star, Trash2 } from "lucide-react";
 import type { Game } from "../lib/types.ts";
 import { fileUrl } from "../lib/format.ts";
+import { ContextMenu } from "./ui/ContextMenu.tsx";
 
 type GameCardProps = {
   game: Game;
@@ -10,6 +12,8 @@ type GameCardProps = {
   onImage: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  /** Quitar del catálogo y apuntarlo en pendientes, para reemplazar una ROM mala. */
+  onReplace: () => void;
 };
 
 export function GameCard({
@@ -19,9 +23,23 @@ export function GameCard({
   onImage,
   onEdit,
   onRemove,
+  onReplace,
 }: GameCardProps) {
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+
+  function openMenu(event: React.MouseEvent<HTMLElement>) {
+    event.preventDefault();
+    // Con la tecla de menú no hay coordenadas: se abre junto a la tarjeta.
+    if (!event.clientX && !event.clientY) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setMenu({ x: rect.left + 16, y: rect.top + 16 });
+    } else {
+      setMenu({ x: event.clientX, y: event.clientY });
+    }
+  }
+
   return (
-    <article className="game-card">
+    <article className="game-card" onContextMenu={openMenu}>
       <div className={`game-cover ${game.hasImage ? "has-art" : "no-art"}`}>
         {game.imagePath ? (
           <img src={fileUrl(game.imagePath)} alt={`Carátula de ${game.title}`} loading="lazy" />
@@ -82,6 +100,28 @@ export function GameCard({
           </button>
         </div>
       </div>
+      {menu && (
+        <ContextMenu
+          x={menu.x}
+          y={menu.y}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Editar", icon: <Pencil size={16} />, onSelect: onEdit },
+            {
+              label: game.hasImage ? "Cambiar imagen" : "Añadir carátula",
+              icon: <ImageIcon size={16} />,
+              onSelect: onImage,
+            },
+            { label: "Borrar", icon: <Trash2 size={16} />, danger: true, onSelect: onRemove },
+            {
+              label: "Borrar y añadir a pendientes",
+              icon: <ListPlus size={16} />,
+              danger: true,
+              onSelect: onReplace,
+            },
+          ]}
+        />
+      )}
     </article>
   );
 }

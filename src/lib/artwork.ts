@@ -19,8 +19,9 @@ export const isArtworkCategory = (value: string): value is ArtworkCategory =>
   (ARTWORK_CATEGORIES as readonly string[]).includes(value);
 
 /** `Nintendo - Game Boy Advance` → `Nintendo___Game_Boy_Advance` (nombre del repo). */
+/** «Nintendo - Game Boy Advance» → «Nintendo_-_Game_Boy_Advance»: el guion se conserva. */
 export const githubRepoName = (libretroSystem: string) =>
-  libretroSystem.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  libretroSystem.replace(/[^a-zA-Z0-9-]+/g, "_").replace(/^_+|_+$/g, "");
 
 export const categoryOfPath = (path: string): ArtworkCategory =>
   ARTWORK_CATEGORIES.find((category) => path.split("/").includes(category)) ?? "Named_Boxarts";

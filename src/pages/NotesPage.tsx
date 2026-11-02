@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import { useMemo, type ComponentProps } from "react";
 import {
   ChevronDown,
   ListTodo,
@@ -6,12 +6,15 @@ import {
   Trash2,
 } from "lucide-react";
 import { AiListOrganizer } from "../components/AiListOrganizer.tsx";
+import { GameTitleInput } from "../components/GameTitleInput.tsx";
 import { NoteCard } from "../components/NoteCard.tsx";
 import { Button } from "../components/ui/Button.tsx";
 import { Field } from "../components/ui/Field.tsx";
 import { Segmented } from "../components/ui/Segmented.tsx";
 import { Skeleton } from "../components/ui/Skeleton.tsx";
+import { useGameTitles } from "../hooks/useGameTitles.ts";
 import type { NotesView } from "../hooks/useNotesView.ts";
+import { gameTitleSuggestions } from "../lib/notes.ts";
 import type { FullEntry, Note, System } from "../lib/types.ts";
 
 type NotesPageProps = {
@@ -72,6 +75,11 @@ export function NotesPage({
     filteredNotes,
     notesGrouped,
   } = view;
+  const gameTitles = useGameTitles(systems, noteSystemDraft);
+  const titleSuggestions = useMemo(
+    () => gameTitleSuggestions(gameTitles.names, noteDraft),
+    [gameTitles.names, noteDraft],
+  );
 
   return (
       <div className="content notes-content">
@@ -128,11 +136,11 @@ export function NotesPage({
             }}
           >
             <Field label="Juego" wide>
-              <input
-                className="text-field"
+              <GameTitleInput
                 value={noteDraft}
-                onChange={(event) => setNoteDraft(event.target.value)}
-                placeholder="Ej. Chrono Trigger"
+                onChange={setNoteDraft}
+                suggestions={titleSuggestions}
+                status={gameTitles.status}
               />
             </Field>
             <Field label="Categoría">

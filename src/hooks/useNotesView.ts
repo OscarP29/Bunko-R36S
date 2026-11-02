@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { noteSystem } from "../lib/notes.ts";
+import { DEFAULT_NOTE_CATEGORIES, noteSystem } from "../lib/notes.ts";
 import type { Note } from "../lib/types.ts";
 
 const priorityWeight = (p?: string) =>
@@ -71,7 +71,10 @@ export function useNotesView(notes: Note[], onAddNote: (note: Note) => void) {
   const availableNoteCategories = useMemo(
     () =>
       Array.from(
-        new Set(notes.flatMap((note) => (note.category ? [note.category] : []))),
+        new Set([
+          ...DEFAULT_NOTE_CATEGORIES,
+          ...notes.flatMap((note) => (note.category ? [note.category] : [])),
+        ]),
       ).sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })),
     [notes],
   );

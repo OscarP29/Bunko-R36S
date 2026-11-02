@@ -327,13 +327,6 @@
   gap: 6px;
 }
 
-.ai-cat-desc {
-  margin: 0;
-  padding: 0 14px 10px;
-  color: var(--muted);
-  font-size: calc(12px * var(--font-scale));
-  line-height: 1.4;
-}
 
 .ai-game-card {
   padding: 10px 12px;
@@ -360,35 +353,8 @@
   gap: 6px;
 }
 
-.ai-game-reason {
-  margin: 0;
-  font-size: calc(13px * var(--font-scale));
-  line-height: 1.5;
-  color: var(--text);
-}
 
-.ai-game-notes {
-  margin: 0;
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  font-size: calc(12px * var(--font-scale));
-  color: var(--muted);
-  line-height: 1.4;
-}
 
-.ai-info-icon {
-  line-height: 1;
-  display: inline-grid;
-  place-items: center;
-  width: calc(16px * var(--font-scale));
-  height: calc(16px * var(--font-scale));
-  border: 1.5px solid var(--line);
-  background: var(--panel2);
-  font-size: calc(10px * var(--font-scale));
-  font-style: normal;
-  flex: 0 0 16px;
-}
 
 .ai-game-file {
   display: flex;

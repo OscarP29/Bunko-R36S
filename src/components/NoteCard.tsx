@@ -74,12 +74,6 @@ export function NoteCard({ note, groupBy, onToggle, onDelete }: NoteCardProps) {
           {folder && <Chip tone="folder">{folder}</Chip>}
         </div>
       )}
-      {!note.done && note.reason && (
-        <p className="note-card-reason">{note.reason}</p>
-      )}
-      {!note.done && note.notes && (
-        <p className="note-card-notes">{note.notes}</p>
-      )}
       {!note.done && note.suggestedFileName && (
         <div className="note-card-file">
           <code>{note.suggestedFileName}</code>
