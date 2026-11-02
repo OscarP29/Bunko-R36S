@@ -11,6 +11,8 @@ export type NewGameInput = {
   sourcePath: string;
   title: string;
   imageBytes: number[] | null;
+  /** Si la ROM viene en .zip/.7z, copia solo el archivo de dentro. */
+  extract?: boolean;
 };
 
 export const addGames = (systemPath: string, games: NewGameInput[]) =>

@@ -7,6 +7,11 @@ import {
   type ThemeMode,
 } from "../lib/settings.ts";
 
+const EXTRACT_OPTIONS = [
+  { value: "ask", label: "Preguntar" },
+  { value: "auto", label: "Extraer siempre" },
+] as const;
+
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Oscuro" },
@@ -64,6 +69,27 @@ export function SettingsPage({
             value={settings.theme}
             options={THEME_OPTIONS}
             onChange={(theme) => updateSettings({ theme })}
+          />
+        </div>
+      </section>
+
+      <section className="settings-card" aria-labelledby="settings-roms">
+        <h2 id="settings-roms">Añadir juegos</h2>
+
+        <div className="settings-row-item">
+          <div>
+            <strong>ROMs comprimidas</strong>
+            <p>
+              Los .7z y los .zip de GBA y NES cargan más lento en la consola.
+              Elige si se extraen solos al copiarlos o si se pregunta cada vez.
+              Arcade siempre se copia comprimido.
+            </p>
+          </div>
+          <Segmented
+            label="ROMs comprimidas"
+            value={settings.autoExtract ? "auto" : "ask"}
+            options={EXTRACT_OPTIONS}
+            onChange={(value) => updateSettings({ autoExtract: value === "auto" })}
           />
         </div>
       </section>

@@ -27,7 +27,7 @@ import {
   type DiskSpace,
 } from "./lib/backend.ts";
 import type { Command } from "./lib/commands.ts";
-import { cleanTitle, systemFolder } from "./lib/rom.ts";
+import { archiveAdvice, cleanTitle, systemFolder } from "./lib/rom.ts";
 import { stepFontScale } from "./lib/settings.ts";
 import type {
   FullEntry,
@@ -79,8 +79,13 @@ function App() {
     selected,
     games,
     onError: setError,
-    onBatchFinished: async (system) => {
-      await selectSystem(system);
+    onBatchFinished: async (system, found, total) => {
+      setNotice(
+        found
+          ? `${found} de ${total} carátulas encontradas`
+          : "No se encontró ninguna carátula",
+      );
+      await reloadGames(system);
       setSystems(await scanSd(root));
     },
   });
@@ -179,7 +184,7 @@ function App() {
       setGames(keep ? await listGames(keep.path) : []);
       if (!result.length) {
         setError(
-          "No encontré carpetas con filelist.csv en este nivel. Prueba con la carpeta ROMS de la tarjeta.",
+          "No hay carpetas con filelist.csv aquí. Elige la carpeta ROMS de la tarjeta.",
         );
       }
     } catch (e) {
@@ -197,12 +202,19 @@ function App() {
     libraryView.resetFilters();
     setLoadingGames(system.id !== selected?.id);
     try {
+      await reloadGames(system);
+    } finally {
+      setLoadingGames(false);
+    }
+  }
+
+  /** Vuelve a leer los juegos sin tocar la búsqueda ni el filtro activos. */
+  async function reloadGames(system: System) {
+    try {
       setGames(await listGames(system.path));
       setError("");
     } catch (e) {
       setError(String(e));
-    } finally {
-      setLoadingGames(false);
     }
   }
 
@@ -298,6 +310,9 @@ function App() {
       if (typeof path !== "string") continue;
       const file = path.split(/[\\/]/).pop() || "";
       if (!file) continue;
+      const archive = selected
+        ? archiveAdvice(file, systemFolder(selected))
+        : null;
       newDrafts.push({
         id: crypto.randomUUID(),
         romPath: path,
@@ -308,6 +323,8 @@ function App() {
         imageStatus: "idle",
         searching: false,
         error: "",
+        archive,
+        extract: archive !== null && settings.settings.autoExtract,
       });
     }
     if (newDrafts.length) {
@@ -362,6 +379,7 @@ function App() {
           sourcePath: draft.romPath,
           title: draft.title,
           imageBytes: draft.imageBytes,
+          extract: draft.extract,
         })),
       );
       setModal(null);
@@ -385,7 +403,7 @@ function App() {
       }
       setModal(null);
       setNotice("Carátula guardada en 512 × 512 px");
-      await selectSystem(selected);
+      await reloadGames(selected);
       setSystems(await scanSd(root));
     } catch (e) {
       setError(String(e));
@@ -566,6 +584,7 @@ function App() {
     { id: "theme-light", group: "Tema", label: "Tema claro", run: () => settings.updateSettings({ theme: "light" }) },
     { id: "theme-dark", group: "Tema", label: "Tema oscuro", run: () => settings.updateSettings({ theme: "dark" }) },
     { id: "theme-system", group: "Tema", label: "Tema del sistema", run: () => settings.updateSettings({ theme: "system" }) },
+    { id: "auto-extract", group: "Juegos", label: settings.settings.autoExtract ? "Preguntar antes de extraer comprimidos" : "Extraer siempre los comprimidos", keywords: "zip 7z descomprimir rom", run: () => settings.updateSettings({ autoExtract: !settings.settings.autoExtract }) },
     { id: "font-up", group: "Letra", label: "Aumentar letra", keywords: "tamaño fuente", shortcut: "Ctrl+Plus", run: () => settings.updateSettings({ fontScale: stepFontScale(settings.settings.fontScale, 1) }) },
     { id: "font-down", group: "Letra", label: "Reducir letra", keywords: "tamaño fuente", shortcut: "Ctrl+Minus", run: () => settings.updateSettings({ fontScale: stepFontScale(settings.settings.fontScale, -1) }) },
     ...systems.map((system) => ({
@@ -678,6 +697,7 @@ function App() {
           onChooseRoms={chooseRoms}
           onRemoveDraft={removeDraft}
           onDraftTitleChange={(id, value) => updateDraft(id, { title: value })}
+          onDraftExtractChange={(id, extract) => updateDraft(id, { extract })}
           onDraftSearch={searchDraftCover}
           onDraftSearchAll={() =>
             void artwork.searchAllDraftCovers(drafts, updateDraft)

@@ -235,7 +235,7 @@ export function LibraryPage({
               <div className="no-systems">
                 <Gamepad2 size={25} />
                 <div>
-                  <strong>No encontré emuladores todavía</strong>
+                  <strong>Sin emuladores todavía</strong>
                   <span>
                     Elige la carpeta que contiene las carpetas de tus
                     sistemas.

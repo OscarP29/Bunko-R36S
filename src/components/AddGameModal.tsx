@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
   CheckCircle2,
   Gamepad2,
@@ -14,6 +15,17 @@ import {
 import { ModalBackdrop, ModalHeader } from "./ui/Modal.tsx";
 import type { Note, NewGameDraft } from "../lib/types.ts";
 import { Button, IconButton } from "./ui/Button.tsx";
+import { Segmented } from "./ui/Segmented.tsx";
+
+const EXTRACT_OPTIONS = [
+  { value: "extract", label: "Extraer al copiar" },
+  { value: "keep", label: "Dejar comprimido" },
+] as const;
+
+const ARCHIVE_WARNINGS = {
+  zip: "En GBA y NES no se recomienda dejar la ROM en .zip: la consola la descomprime en cada arranque y no ahorra nada útil.",
+  "7z": "No se recomienda copiar archivos .7z: la consola tarda más en descomprimirlos que un .zip o una ROM suelta.",
+} as const;
 
 type AddGameModalProps = {
   systemName: string;
@@ -24,6 +36,7 @@ type AddGameModalProps = {
   onChooseRoms: () => void;
   onRemoveDraft: (id: string) => void;
   onDraftTitleChange: (id: string, value: string) => void;
+  onDraftExtractChange: (id: string, extract: boolean) => void;
   onDraftSearch: (id: string) => void;
   onDraftSearchAll: () => void;
   onDraftSelectImage: (id: string, file: File) => void;
@@ -154,6 +167,22 @@ export function AddGameModal(props: AddGameModalProps) {
                         </span>
                       )}
                     </div>
+                    {draft.archive && (
+                      <div className="draft-archive" role="note">
+                        <p>
+                          <AlertTriangle size={16} />
+                          <span>{ARCHIVE_WARNINGS[draft.archive]}</span>
+                        </p>
+                        <Segmented
+                          label={`Qué hacer con ${draft.fileName}`}
+                          value={draft.extract ? "extract" : "keep"}
+                          options={EXTRACT_OPTIONS}
+                          onChange={(value) =>
+                            props.onDraftExtractChange(draft.id, value === "extract")
+                          }
+                        />
+                      </div>
+                    )}
                     <div className="draft-cover-actions">
                       <Button
                         onClick={() => props.onDraftSearch(draft.id)}

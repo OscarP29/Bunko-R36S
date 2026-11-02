@@ -92,3 +92,32 @@ export function guessLibretroSystem(folder: string): string {
 /** Nombre de la carpeta del sistema dentro de la tarjeta. */
 export const systemFolder = (system: { path: string }) =>
   system.path.split(/[\\/]/).pop() || "";
+
+/** Clave de comparación de una carpeta: minúsculas, sin signos ni espacios. */
+const folderKey = (folder: string) => folder.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** Arcade necesita el .zip tal cual: el emulador lee el romset comprimido. */
+const ARCADE_FOLDERS = new Set([
+  "arcade", "mame", "mame2003", "mame2003plus", "mame2010", "fbneo", "fba",
+  "finalburn", "neogeo", "cps1", "cps2", "cps3", "atomiswave", "naomi",
+]);
+
+/** Sistemas donde un .zip no aporta nada y conviene dejar la ROM suelta. */
+const EXTRACT_ZIP_FOLDERS = new Set([
+  "gba", "gameboyadvance", "nes", "famicom", "fc", "nintendoentertainmentsystem",
+]);
+
+export type ArchiveAdvice = "zip" | "7z" | null;
+
+/**
+ * Indica si conviene extraer un comprimido antes de copiarlo a la consola:
+ * cualquier .7z (fuera de arcade) y los .zip de GBA y NES.
+ */
+export function archiveAdvice(fileName: string, folder: string): ArchiveAdvice {
+  const ext = fileName.toLowerCase().match(/\.([^.]+)$/)?.[1];
+  const key = folderKey(folder);
+  if (ARCADE_FOLDERS.has(key)) return null;
+  if (ext === "7z") return "7z";
+  if (ext === "zip" && EXTRACT_ZIP_FOLDERS.has(key)) return "zip";
+  return null;
+}

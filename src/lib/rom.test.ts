@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  archiveAdvice,
   cleanRomName,
   cleanTitle,
   guessLibretroSystem,
@@ -69,4 +70,15 @@ test("makeArtworkUrl codifica espacios y acentos", () => {
       "/Named_Titles/Crash%20Bandicoot%20(Spain).png",
     ),
   );
+});
+
+test("archiveAdvice avisa de .7z y de .zip en GBA y NES, nunca en arcade", () => {
+  assert.equal(archiveAdvice("Juego.zip", "gba"), "zip");
+  assert.equal(archiveAdvice("Juego.ZIP", "NES"), "zip");
+  assert.equal(archiveAdvice("Juego.zip", "snes"), null);
+  assert.equal(archiveAdvice("Juego.7z", "snes"), "7z");
+  assert.equal(archiveAdvice("Juego.7z", "psx"), "7z");
+  assert.equal(archiveAdvice("sf2.zip", "mame"), null);
+  assert.equal(archiveAdvice("sf2.7z", "fbneo"), null);
+  assert.equal(archiveAdvice("Juego.gba", "gba"), null);
 });

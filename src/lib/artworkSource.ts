@@ -45,6 +45,20 @@ export const saveArtworkChoice = (
   match: ArtworkMatch,
 ) => writeLocalJson(choiceKey(libretroSystem, fileName), match);
 
+/** Error con un mensaje corto, pensado para mostrarse tal cual en la interfaz. */
+export class ArtworkError extends Error {}
+
+/**
+ * Mensaje breve para la interfaz. Los fallos de red traen textos técnicos
+ * largos (URL, código del sistema operativo): se registran en consola y se
+ * sustituyen por uno genérico.
+ */
+export function artworkErrorMessage(error: unknown): string {
+  if (error instanceof ArtworkError) return error.message;
+  console.warn("Error al buscar carátulas", error);
+  return "No se pudo conectar con el servidor de carátulas.";
+}
+
 /** Índice de carátulas de un sistema: caché, GitHub y, si llega truncado, el listado público. */
 export async function loadArtworkIndex(
   libretroSystem: string,
@@ -66,9 +80,7 @@ export async function loadArtworkIndex(
     { headers: { Accept: "application/vnd.github+json" } },
   );
   if (!response.ok) {
-    throw new Error(
-      `GitHub respondió ${response.status} al cargar el índice de ${libretroSystem}.`,
-    );
+    throw new ArtworkError(`Índice de carátulas no disponible (${response.status}).`);
   }
   const tree = (await response.json()) as {
     truncated?: boolean;
@@ -76,22 +88,16 @@ export async function loadArtworkIndex(
   };
 
   if (tree.truncated) {
-    onWarning(
-      `GitHub devolvió un índice truncado para ${libretroSystem}. Probé el listado público del servidor de thumbnails como alternativa.`,
-    );
+    onWarning("Índice incompleto: se usa el listado de Libretro.");
     const fallback = await webFetch(
       `https://thumbnails.libretro.com/${encodeURIComponent(libretroSystem)}/Named_Boxarts/`,
     );
     if (!fallback.ok) {
-      throw new Error(
-        "El índice de GitHub llegó truncado y el servidor de thumbnails no ofreció un listado alternativo. Puedes probar una búsqueda exacta.",
-      );
+      throw new ArtworkError("Índice de carátulas incompleto.");
     }
     const files = parseLibretroListing(await fallback.text(), "Named_Boxarts");
     if (!files.length)
-      throw new Error(
-        "La alternativa pública no devolvió nombres de carátulas.",
-      );
+      throw new ArtworkError("Índice de carátulas vacío.");
     await writeCachedJson(cacheKey, {
       savedAt: Date.now(),
       files,
@@ -101,9 +107,7 @@ export async function loadArtworkIndex(
 
   const files = parseGithubTree(tree.tree ?? []);
   if (!files.length) {
-    throw new Error(
-      `No encontré Named_Boxarts en el repositorio ${repo}. Revisa el nombre del sistema.`,
-    );
+    throw new ArtworkError(`Sin carátulas para ${libretroSystem}.`);
   }
   await writeCachedJson(cacheKey, {
     savedAt: Date.now(),
@@ -159,7 +163,7 @@ export async function fetchArtwork(
 ): Promise<ArtworkFile> {
   const response = await webFetch(makeArtworkUrl(libretroSystem, category, name));
   if (!response.ok)
-    throw new Error(`No se pudo descargar ${name} (${response.status}).`);
+    throw new ArtworkError(`No se pudo descargar la carátula (${response.status}).`);
   return readArtworkFile(response);
 }
 

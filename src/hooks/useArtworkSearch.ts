@@ -8,6 +8,7 @@ import {
   uniqueQueries,
 } from "../lib/artwork.ts";
 import {
+  artworkErrorMessage,
   fetchArtwork,
   fetchFirstArtwork,
   libretroSystemOf,
@@ -32,7 +33,7 @@ type UseArtworkSearchOptions = {
   games: Game[];
   onError: (message: string) => void;
   /** Tras la búsqueda masiva: refrescar la lista del sistema. */
-  onBatchFinished: (system: System) => Promise<void>;
+  onBatchFinished: (system: System, found: number, total: number) => Promise<void>;
 };
 
 const SEARCH_WORKERS = 6;
@@ -128,7 +129,7 @@ export function useArtworkSearch({
         files = await loadArtworkIndex(libretroSystem, setArtworkWarning);
       } catch (indexError) {
         setArtworkWarning(
-          `${String(indexError)} Probaré las categorías públicas de carátulas, títulos y capturas.`,
+          `${artworkErrorMessage(indexError)} Se busca por nombre exacto.`,
         );
       }
 
@@ -166,7 +167,7 @@ export function useArtworkSearch({
     } catch (e) {
       setImageStatus("missing");
       setArtworkProgress("");
-      onError(String(e));
+      onError(artworkErrorMessage(e));
     }
   }
 
@@ -174,7 +175,7 @@ export function useArtworkSearch({
     try {
       await previewArtworkMatch(match, fileName);
     } catch (e) {
-      onError(String(e));
+      onError(artworkErrorMessage(e));
       setImageStatus("missing");
     }
   }
@@ -183,7 +184,7 @@ export function useArtworkSearch({
     try {
       return await loadArtworkIndex(libretroSystem, setArtworkWarning);
     } catch (indexError) {
-      setArtworkWarning(String(indexError));
+      setArtworkWarning(artworkErrorMessage(indexError));
       return [];
     }
   }
@@ -225,7 +226,7 @@ export function useArtworkSearch({
           updateDraft({
             searching: false,
             imageStatus: "missing",
-            error: "Sin coincidencias en Libretro.",
+            error: "Sin coincidencias.",
           });
         return;
       }
@@ -241,7 +242,7 @@ export function useArtworkSearch({
       updateDraft({
         searching: false,
         imageStatus: "missing",
-        error: String(e),
+        error: artworkErrorMessage(e),
       });
     }
   }
@@ -300,6 +301,7 @@ export function useArtworkSearch({
       // sin índice se intenta la ruta exacta juego por juego
     }
 
+    let found = 0;
     const work = runConcurrently(
       missing,
       async (game) => {
@@ -315,7 +317,10 @@ export function useArtworkSearch({
                 : []
               : exactArtworkTargets([], [stem(game.fileName)]),
           );
-          if (file) await saveImage(selected.path, game.fileName, file.bytes);
+          if (file) {
+            await saveImage(selected.path, game.fileName, file.bytes);
+            found += 1;
+          }
         } catch {
           // un juego sin resultado no detiene la búsqueda del resto
         }
@@ -328,7 +333,7 @@ export function useArtworkSearch({
 
     try {
       await work;
-      await onBatchFinished(selected);
+      await onBatchFinished(selected, found, missing.length);
     } finally {
       setBatchProgress(null);
     }

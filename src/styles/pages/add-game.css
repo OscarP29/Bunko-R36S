@@ -191,6 +191,29 @@
   color: var(--error);
 }
 
+.draft-archive {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid var(--line);
+  background: var(--panel2);
+}
+
+.draft-archive p {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--warning);
+  font-size: calc(14px * var(--font-scale));
+  line-height: 1.4;
+}
+
+.draft-archive svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
 .remove-draft {
   align-self: start;
 }

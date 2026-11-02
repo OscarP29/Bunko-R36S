@@ -8,6 +8,8 @@ export type Settings = {
   theme: ThemeMode;
   /** Multiplicador de todos los tamaños de letra (`--font-scale`). */
   fontScale: number;
+  /** Extrae sin preguntar los .zip/.7z que no conviene copiar comprimidos. */
+  autoExtract: boolean;
 };
 
 export const FONT_SCALES = [
@@ -17,7 +19,11 @@ export const FONT_SCALES = [
   { value: 1.5, label: "Muy grande" },
 ] as const;
 
-export const DEFAULT_SETTINGS: Settings = { theme: "light", fontScale: 1.2 };
+export const DEFAULT_SETTINGS: Settings = {
+  theme: "light",
+  fontScale: 1.2,
+  autoExtract: false,
+};
 
 const THEMES: readonly ThemeMode[] = ["light", "dark", "system"];
 
@@ -30,6 +36,10 @@ export function loadSettings(): Settings {
     fontScale: FONT_SCALES.some((scale) => scale.value === saved?.fontScale)
       ? (saved?.fontScale as number)
       : DEFAULT_SETTINGS.fontScale,
+    autoExtract:
+      typeof saved?.autoExtract === "boolean"
+        ? saved.autoExtract
+        : DEFAULT_SETTINGS.autoExtract,
   };
 }
 

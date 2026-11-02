@@ -322,6 +322,108 @@ fn scan_root(root: &Path) -> Result<Vec<System>, String> {
     Ok(systems)
 }
 
+/// Comprimidos que se pueden extraer al añadir un juego.
+#[derive(Clone, Copy)]
+enum ArchiveKind {
+    Zip,
+    SevenZ,
+}
+
+fn archive_kind(path: &Path) -> Option<ArchiveKind> {
+    let ext = path.extension()?.to_str()?.to_lowercase();
+    match ext.as_str() {
+        "zip" => Some(ArchiveKind::Zip),
+        "7z" => Some(ArchiveKind::SevenZ),
+        _ => None,
+    }
+}
+
+/// Último componente de una ruta interna del comprimido, sin carpetas.
+fn entry_file_name(name: &str) -> Option<String> {
+    let base = name.rsplit(['/', '\\']).next()?.trim();
+    (!base.is_empty() && base != "." && base != "..").then(|| base.to_string())
+}
+
+/// Nombre del único archivo que contiene el comprimido. Si hay varios (por
+/// ejemplo `.cue` + `.bin`) no se adivina cuál es la ROM: hay que extraerlo a mano.
+fn archive_single_entry(path: &Path, kind: ArchiveKind) -> Result<String, String> {
+    let label = path.file_name().and_then(|n| n.to_str()).unwrap_or("el comprimido");
+    let names: Vec<String> = match kind {
+        ArchiveKind::Zip => {
+            let file = File::open(path).map_err(|e| format!("No se pudo abrir {label}: {e}"))?;
+            let mut archive = zip::ZipArchive::new(file)
+                .map_err(|e| format!("{label} no es un .zip válido: {e}"))?;
+            let mut names = Vec::new();
+            for index in 0..archive.len() {
+                let entry = archive.by_index(index).map_err(|e| e.to_string())?;
+                if !entry.is_dir() {
+                    names.push(entry.name().unwrap_or_default().to_string());
+                }
+            }
+            names
+        }
+        ArchiveKind::SevenZ => {
+            let reader = sevenz_rust2::ArchiveReader::open(path, sevenz_rust2::Password::empty())
+                .map_err(|e| format!("{label} no es un .7z válido: {e}"))?;
+            reader
+                .archive()
+                .files
+                .iter()
+                .filter(|entry| !entry.is_directory)
+                .map(|entry| entry.name.clone())
+                .collect()
+        }
+    };
+    match names.as_slice() {
+        [only] => entry_file_name(only).ok_or_else(|| format!("{label} contiene un nombre inválido")),
+        [] => Err(format!("{label} está vacío")),
+        _ => Err(format!(
+            "{label} contiene {} archivos; extráelo a mano o añádelo sin extraer",
+            names.len()
+        )),
+    }
+}
+
+/// Extrae el único archivo del comprimido en `destination`. Si falla a mitad,
+/// borra lo escrito para no dejar una ROM truncada en la tarjeta.
+fn extract_single_entry(source: &Path, kind: ArchiveKind, destination: &Path) -> Result<(), String> {
+    let result = (|| -> Result<(), String> {
+        let mut output = File::create(destination).map_err(|e| e.to_string())?;
+        match kind {
+            ArchiveKind::Zip => {
+                let file = File::open(source).map_err(|e| e.to_string())?;
+                let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+                for index in 0..archive.len() {
+                    let mut entry = archive.by_index(index).map_err(|e| e.to_string())?;
+                    if !entry.is_dir() {
+                        std::io::copy(&mut entry, &mut output).map_err(|e| e.to_string())?;
+                        break;
+                    }
+                }
+            }
+            ArchiveKind::SevenZ => {
+                let mut reader =
+                    sevenz_rust2::ArchiveReader::open(source, sevenz_rust2::Password::empty())
+                        .map_err(|e| e.to_string())?;
+                reader
+                    .for_each_entries(|entry, data| {
+                        if entry.is_directory {
+                            return Ok(true);
+                        }
+                        std::io::copy(data, &mut output)?;
+                        Ok(false)
+                    })
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+        output.flush().map_err(|e| e.to_string())
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(destination);
+    }
+    result
+}
+
 /// Un juego que llega desde la interfaz para añadirlo al catálogo.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -329,6 +431,9 @@ struct NewGameInput {
     source_path: String,
     title: String,
     image_bytes: Option<Vec<u8>>,
+    /// Si la ROM viene en .zip o .7z, copia solo el archivo de dentro.
+    #[serde(default)]
+    extract: bool,
 }
 
 struct PreparedGame {
@@ -336,6 +441,8 @@ struct PreparedGame {
     destination: PathBuf,
     file_name: String,
     title: String,
+    /// Formato del comprimido cuando hay que extraerlo en vez de copiarlo.
+    extract: Option<ArchiveKind>,
     /// Ruta final de la carátula y sus bytes ya convertidos a PNG.
     cover: Option<(PathBuf, Vec<u8>, bool)>,
 }
@@ -364,11 +471,15 @@ fn add_games_impl(dir: &Path, inputs: &[NewGameInput]) -> Result<Vec<Game>, Stri
                 input.source_path
             ));
         }
-        let file_name = source
-            .file_name()
-            .and_then(|name| name.to_str())
-            .ok_or("Nombre de archivo inválido")?
-            .to_string();
+        let extract = input.extract.then(|| archive_kind(source)).flatten();
+        let file_name = match extract {
+            Some(kind) => archive_single_entry(source, kind)?,
+            None => source
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or("Nombre de archivo inválido")?
+                .to_string(),
+        };
         let key = file_name.to_lowercase();
         if existing.contains(&key) || !in_batch.insert(key) {
             return Err(format!(
@@ -400,6 +511,7 @@ fn add_games_impl(dir: &Path, inputs: &[NewGameInput]) -> Result<Vec<Game>, Stri
             destination,
             file_name,
             title: input.title.trim().to_string(),
+            extract,
             cover,
         });
     }
@@ -413,8 +525,14 @@ fn add_games_impl(dir: &Path, inputs: &[NewGameInput]) -> Result<Vec<Game>, Stri
     let mut written_covers: Vec<PathBuf> = Vec::new();
     let result = (|| -> Result<(), String> {
         for game in &prepared {
-            fs::copy(&game.source, &game.destination)
-                .map_err(|e| format!("No se pudo copiar {}: {e}", game.file_name))?;
+            match game.extract {
+                Some(kind) => extract_single_entry(&game.source, kind, &game.destination)
+                    .map_err(|e| format!("No se pudo extraer {}: {e}", game.file_name))?,
+                None => {
+                    fs::copy(&game.source, &game.destination)
+                        .map_err(|e| format!("No se pudo copiar {}: {e}", game.file_name))?;
+                }
+            }
             copied.push(game.destination.clone());
         }
         for game in &prepared {
@@ -877,6 +995,7 @@ mod tests {
             source_path: source.to_string_lossy().to_string(),
             title: "Nuevo Juego".to_string(),
             image_bytes: Some(png),
+            extract: false,
         }];
         let games = add_games_impl(dir.path(), &inputs).unwrap();
         let game = &games[0];
@@ -902,6 +1021,7 @@ mod tests {
             source_path: source.to_string_lossy().to_string(),
             title: "Roto".to_string(),
             image_bytes: Some(b"no es una imagen".to_vec()),
+            extract: false,
         }];
         let error = add_games_impl(dir.path(), &inputs);
         assert!(error.is_err());
@@ -921,6 +1041,7 @@ mod tests {
             source_path: source.to_string_lossy().to_string(),
             title: "Otro".to_string(),
             image_bytes: None,
+            extract: false,
         }];
         let error = add_games_impl(dir.path(), &inputs);
         assert!(error.is_err());
@@ -954,11 +1075,13 @@ mod tests {
                 source_path: source_b.to_string_lossy().to_string(),
                 title: "Juego B".to_string(),
                 image_bytes: Some(png),
+                extract: false,
             },
             NewGameInput {
                 source_path: source_c.to_string_lossy().to_string(),
                 title: "Juego C".to_string(),
                 image_bytes: None,
+                extract: false,
             },
         ];
         let games = add_games_impl(dir.path(), &inputs).unwrap();
@@ -988,11 +1111,13 @@ mod tests {
                 source_path: source.to_string_lossy().to_string(),
                 title: "Nuevo".to_string(),
                 image_bytes: None,
+                extract: false,
             },
             NewGameInput {
                 source_path: source.to_string_lossy().to_string(),
                 title: "Nuevo".to_string(),
                 image_bytes: None,
+                extract: false,
             },
         ];
         let error = add_games_impl(dir.path(), &inputs);
@@ -1028,5 +1153,93 @@ mod tests {
         fs::create_dir_all(&inside).unwrap();
         fs::write(inside.join("filelist.csv"), b"").unwrap();
         assert!(path_within(root.path(), &inside).is_ok());
+    }
+
+    fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {
+        let mut writer = zip::ZipWriter::new(File::create(path).unwrap());
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+        for (name, bytes) in entries {
+            writer.start_file(*name, options).unwrap();
+            writer.write_all(bytes).unwrap();
+        }
+        writer.finish().unwrap();
+    }
+
+    fn write_7z(path: &Path, name: &str, bytes: &[u8]) {
+        let mut writer = sevenz_rust2::ArchiveWriter::create(path).unwrap();
+        writer
+            .push_archive_entry(sevenz_rust2::ArchiveEntry::new_file(name), Some(bytes))
+            .unwrap();
+        writer.finish().unwrap();
+    }
+
+    fn extract_input(source: &Path) -> NewGameInput {
+        NewGameInput {
+            source_path: source.to_string_lossy().to_string(),
+            title: "Extraído".to_string(),
+            image_bytes: None,
+            extract: true,
+        }
+    }
+
+    #[test]
+    fn add_games_extrae_la_rom_de_un_zip() {
+        let dir = system_dir("extract-zip");
+        let sources = TempDir::new("extract-zip-sources");
+        let source = sources.path().join("Paquete.zip");
+        write_zip(&source, &[("carpeta/Juego Z.gba", b"rom-zip")]);
+        let games = add_games_impl(dir.path(), &[extract_input(&source)]).unwrap();
+        assert_eq!(games[0].file_name, "Juego Z.gba");
+        assert_eq!(fs::read(dir.path().join("Juego Z.gba")).unwrap(), b"rom-zip");
+        assert!(!dir.path().join("Paquete.zip").exists());
+        let rows = parse_rows(&dir.path().join(FILELIST)).unwrap();
+        assert!(rows.iter().any(|(f, t)| f == "Juego Z.gba" && t == "Extraído"));
+    }
+
+    #[test]
+    fn add_games_extrae_la_rom_de_un_7z() {
+        let dir = system_dir("extract-7z");
+        let sources = TempDir::new("extract-7z-sources");
+        let source = sources.path().join("Paquete.7z");
+        write_7z(&source, "Juego S.nes", b"rom-7z");
+        add_games_impl(dir.path(), &[extract_input(&source)]).unwrap();
+        assert_eq!(fs::read(dir.path().join("Juego S.nes")).unwrap(), b"rom-7z");
+    }
+
+    #[test]
+    fn add_games_sin_extraer_copia_el_comprimido() {
+        let dir = system_dir("keep-zip");
+        let sources = TempDir::new("keep-zip-sources");
+        let source = sources.path().join("Paquete.zip");
+        write_zip(&source, &[("Juego K.gba", b"rom")]);
+        let mut input = extract_input(&source);
+        input.extract = false;
+        add_games_impl(dir.path(), &[input]).unwrap();
+        assert!(dir.path().join("Paquete.zip").is_file());
+        assert!(!dir.path().join("Juego K.gba").exists());
+    }
+
+    #[test]
+    fn add_games_con_varios_archivos_en_el_zip_no_escribe_nada() {
+        let dir = system_dir("extract-multi");
+        let sources = TempDir::new("extract-multi-sources");
+        let source = sources.path().join("Disco.zip");
+        write_zip(&source, &[("Disco.cue", b"cue"), ("Disco.bin", b"bin")]);
+        let before = fs::read_to_string(dir.path().join(FILELIST)).unwrap();
+        let error = add_games_impl(dir.path(), &[extract_input(&source)])
+            .err()
+            .expect("debe fallar");
+        assert!(error.contains("2 archivos"));
+        assert_eq!(fs::read_to_string(dir.path().join(FILELIST)).unwrap(), before);
+    }
+
+    #[test]
+    fn add_games_extraido_duplicado_falla() {
+        let dir = system_dir("extract-dup");
+        let sources = TempDir::new("extract-dup-sources");
+        let source = sources.path().join("Otro nombre.zip");
+        write_zip(&source, &[("Juego A.gba", b"rom")]);
+        assert!(add_games_impl(dir.path(), &[extract_input(&source)]).is_err());
     }
 }

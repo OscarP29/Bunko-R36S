@@ -106,7 +106,7 @@ export function ArtworkModal(props: ArtworkModalProps) {
               <img src={props.imagePreview} alt="Carátula seleccionada" />
               <div>
                 <strong>
-                  {props.imageStatus === "found" ? "¡Encontramos una carátula!" : "Vista previa"}
+                  {props.imageStatus === "found" ? "Carátula encontrada" : "Vista previa"}
                   <span className="found-badge">
                     <Check size={11} /> Lista
                   </span>
@@ -122,7 +122,7 @@ export function ArtworkModal(props: ArtworkModalProps) {
               <ImageIcon size={18} />
               <span>
                 {props.imageStatus === "missing"
-                  ? "Sin resultados. Selecciona una imagen de tu equipo."
+                  ? "Sin resultados. Sube una imagen desde tu equipo."
                   : "O selecciona una imagen desde tu equipo"}
               </span>
               <ChevronRight size={15} />

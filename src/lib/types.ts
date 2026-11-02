@@ -44,6 +44,10 @@ export type NewGameDraft = {
   imageStatus: ImageStatus;
   searching: boolean;
   error: string;
+  /** Comprimido que no conviene copiar tal cual (ver `archiveAdvice`). */
+  archive: "zip" | "7z" | null;
+  /** Copiar solo la ROM de dentro del comprimido. */
+  extract: boolean;
 };
 
 export type AiCategoryItem = {
