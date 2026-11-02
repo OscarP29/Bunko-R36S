@@ -127,3 +127,35 @@ export const readCache = (key: string) => invoke<string | null>("read_cache", { 
 export const writeCache = (key: string, value: string) => invoke<void>("write_cache", { key, value });
 
 export const unmountSd = () => invoke<void>("unmount_sd");
+
+/** Sonido del menú de la consola, según `cubegm/setting.xml`. */
+export type ConsoleSound = {
+  slot: string;
+  file: string;
+  exists: boolean;
+  bytes: number;
+  /** Bunko lo cambió y guarda el original en la carpeta de trabajo. */
+  customized: boolean;
+};
+
+export const consoleSounds = (workDir: string) =>
+  invoke<ConsoleSound[]>("console_sounds", { workDir });
+
+export const readConsoleSound = (slot: string) =>
+  invoke<ArrayBuffer>("read_console_sound", { slot });
+
+/** `bytes`: un WAV ya convertido. `sourcePath`: un MP3 del PC (la música). */
+export const replaceConsoleSound = (
+  workDir: string,
+  slot: string,
+  source: { bytes: number[] } | { sourcePath: string },
+) =>
+  invoke<ConsoleSound>("replace_console_sound", {
+    workDir,
+    slot,
+    bytes: "bytes" in source ? source.bytes : null,
+    sourcePath: "sourcePath" in source ? source.sourcePath : null,
+  });
+
+export const restoreConsoleSound = (workDir: string, slot: string) =>
+  invoke<void>("restore_console_sound", { workDir, slot });

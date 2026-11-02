@@ -9,6 +9,7 @@ use std::{
 };
 use tauri::{AppHandle, Manager, State};
 
+mod look;
 mod saves;
 
 /// Tamaño final de todas las carátulas guardadas en la microSD.
@@ -933,6 +934,43 @@ fn open_backups_folder(state: State<AppState>, work_dir: String) -> Result<(), S
 }
 
 #[tauri::command(async)]
+fn console_sounds(state: State<AppState>, work_dir: String) -> Result<Vec<look::SoundSlot>, String> {
+    let _disk = disk_read(&state)?;
+    look::list_sounds(&require_root(&state)?, &work_dir)
+}
+
+#[tauri::command(async)]
+fn read_console_sound(state: State<AppState>, slot: String) -> Result<tauri::ipc::Response, String> {
+    let _disk = disk_read(&state)?;
+    Ok(tauri::ipc::Response::new(look::read_sound(&require_root(&state)?, &slot)?))
+}
+
+/// Recibe el sonido ya convertido (`bytes`) o la ruta de un archivo del PC
+/// (`source_path`, para la música, que puede pesar varios MB).
+#[tauri::command(async)]
+fn replace_console_sound(
+    state: State<AppState>,
+    work_dir: String,
+    slot: String,
+    bytes: Option<Vec<u8>>,
+    source_path: Option<String>,
+) -> Result<look::SoundSlot, String> {
+    let bytes = match (bytes, source_path) {
+        (Some(bytes), _) => bytes,
+        (None, Some(path)) => fs::read(&path).map_err(|e| format!("No se pudo leer el archivo: {e}"))?,
+        (None, None) => return Err("Falta el sonido nuevo".into()),
+    };
+    let _disk = disk_write(&state)?;
+    look::replace_sound(&require_root(&state)?, &work_dir, &slot, &bytes)
+}
+
+#[tauri::command(async)]
+fn restore_console_sound(state: State<AppState>, work_dir: String, slot: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    look::restore_sound(&require_root(&state)?, &work_dir, &slot)
+}
+
+#[tauri::command(async)]
 fn read_sagas(state: State<AppState>) -> Result<String, String> {
     let _disk = disk_read(&state)?;
     let path = require_root(&state)?.join(SAGAS_FILE);
@@ -1050,6 +1088,10 @@ pub fn run() {
             list_backups,
             restore_saves,
             open_backups_folder,
+            console_sounds,
+            read_console_sound,
+            replace_console_sound,
+            restore_console_sound,
             read_sagas,
             write_sagas,
             read_cache,

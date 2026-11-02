@@ -373,7 +373,7 @@ fn canonical_prefix(path: &Path) -> PathBuf {
 
 /// Carpeta de copias de esta tarjeta: `<trabajo>/<nombre>-<id8>`. Si el
 /// usuario renombra la consola se sigue usando la carpeta existente.
-fn card_folder(root: &Path, work_dir: &str, card: &CardInfo) -> Result<PathBuf, String> {
+pub(crate) fn card_folder(root: &Path, work_dir: &str, card: &CardInfo) -> Result<PathBuf, String> {
     let work = work_folder(root, work_dir)?;
     let suffix = format!("-{}", &card.id[..card.id.len().min(8)]);
     if let Ok(entries) = fs::read_dir(&work) {

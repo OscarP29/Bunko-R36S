@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, FolderOpen, History, LoaderCircle, Save, Trash2 } from "lucide-react";
 import { BackupModal } from "../components/BackupModal.tsx";
+import { ConsoleSounds } from "../components/ConsoleSounds.tsx";
 import { RestoreModal } from "../components/RestoreModal.tsx";
 import { Button } from "../components/ui/Button.tsx";
 import { Segmented } from "../components/ui/Segmented.tsx";
@@ -186,6 +187,17 @@ export function SettingsPage({
           </p>
         )}
       </section>
+
+      <ConsoleSounds
+        enabled={saves.ready}
+        cardId={card.card?.id}
+        workDir={saves.effectiveWorkDir}
+        disabledReason={
+          !card.card
+            ? "Conecta la microSD para cambiar los sonidos de su consola."
+            : "Este modelo todavía no permite cambiar los sonidos."
+        }
+      />
 
       <section className="settings-card" aria-labelledby="settings-backups">
         <h2 id="settings-backups">Copias de seguridad</h2>
