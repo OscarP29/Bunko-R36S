@@ -25,6 +25,17 @@ export const addGame = (systemPath: string, sourcePath: string, title: string, i
 export const removeGame = (systemPath: string, fileName: string) =>
   invoke<void>("remove_game", { systemPath, fileName });
 
+export const renameGame = (systemPath: string, fileName: string, title: string) =>
+  invoke<void>("rename_game", { systemPath, fileName, title });
+
+/** Reescribe `filelist.csv` en este orden, que es el que muestra la consola. */
+export const reorderGames = (systemPath: string, order: string[]) =>
+  invoke<void>("reorder_games", { systemPath, order });
+
+export const readSagas = () => invoke<string>("read_sagas");
+
+export const writeSagas = (content: string) => invoke<void>("write_sagas", { content });
+
 export const saveImage = (systemPath: string, fileName: string, imageBytes: number[]) =>
   invoke<string>("save_image", { systemPath, fileName, imageBytes });
 

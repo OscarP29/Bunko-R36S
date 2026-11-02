@@ -6,11 +6,14 @@ import { CheckCircle2 } from "lucide-react";
 import { AddGameModal } from "./components/AddGameModal.tsx";
 import { ArtworkModal } from "./components/ArtworkModal.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
+import { EditGameModal } from "./components/EditGameModal.tsx";
+import { OrganizeModal } from "./components/OrganizeModal.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
 import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
 import { useNotesView } from "./hooks/useNotesView.ts";
+import { useSagas } from "./hooks/useSagas.ts";
 import { useSettings } from "./hooks/useSettings.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
 import {
@@ -20,6 +23,8 @@ import {
   openFolder,
   readNotes,
   removeGame,
+  renameGame,
+  reorderGames,
   saveImage,
   scanSd,
   unmountSd,
@@ -28,6 +33,7 @@ import {
 } from "./lib/backend.ts";
 import type { Command } from "./lib/commands.ts";
 import { archiveAdvice, cleanTitle, systemFolder } from "./lib/rom.ts";
+import { flattenOrder, sagaOf, type GameGroup } from "./lib/sagas.ts";
 import { stepFontScale } from "./lib/settings.ts";
 import type {
   FullEntry,
@@ -58,7 +64,7 @@ function App() {
   const [scannedRoot, setScannedRoot] = useState("");
   const [diskSpace, setDiskSpace] = useState<DiskSpace | null>(null);
   const [error, setError] = useState("");
-  const [modal, setModal] = useState<"add" | "image" | null>(null);
+  const [modal, setModal] = useState<"add" | "image" | "edit" | "organize" | null>(null);
   const [targetGame, setTargetGame] = useState<Game | null>(null);
   const [drafts, setDrafts] = useState<NewGameDraft[]>([]);
   const [fullLibrary, setFullLibrary] = useState<FullEntry[]>([]);
@@ -72,6 +78,8 @@ function App() {
   /** Cola de escrituras: los comandos son concurrentes y las notas deben guardarse en orden. */
   const notesWrites = useRef<Promise<void>>(Promise.resolve());
   const libraryView = useLibraryView(games);
+  const sagas = useSagas(root, scannedRoot);
+  const sagaOverrides = sagas.overridesFor(selected ? systemFolder(selected) : "");
   const notesView = useNotesView(notes, addNote);
   const settings = useSettings();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -430,6 +438,45 @@ function App() {
     }
   }
 
+  function startEdit(game: Game) {
+    setTargetGame(game);
+    setModal("edit");
+  }
+
+  async function saveGameEdit(title: string, saga: string | undefined) {
+    if (!selected || !targetGame) return;
+    setLoading(true);
+    try {
+      if (title !== targetGame.title) {
+        await renameGame(selected.path, targetGame.fileName, title);
+      }
+      await sagas.setSaga(systemFolder(selected), targetGame.fileName, saga);
+      setModal(null);
+      setNotice("Juego actualizado");
+      await reloadGames(selected);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function applyOrganization(groups: GameGroup<Game>[]) {
+    if (!selected) return;
+    setLoading(true);
+    try {
+      await reorderGames(selected.path, flattenOrder(groups));
+      setModal(null);
+      libraryView.setSortBy("console");
+      setNotice("Orden aplicado a la consola");
+      await reloadGames(selected);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function startImage(game: Game) {
     setTargetGame(game);
     artwork.resetArtwork();
@@ -566,6 +613,7 @@ function App() {
     ...(selected
       ? [
           { id: "add-game", group: "Acciones", label: "Añadir juegos", keywords: "rom nuevo", shortcut: "Ctrl+N", run: openLibrary(openAdd) },
+          { id: "organize", group: "Acciones", label: "Organizar juegos en la consola", keywords: "ordenar alfabetico sagas orden", run: openLibrary(() => setModal("organize")) },
           { id: "missing-covers", group: "Acciones", label: "Buscar carátulas faltantes", keywords: "portadas imagenes", run: openLibrary(artwork.searchMissingCovers) },
           { id: "open-system", group: "Acciones", label: `Abrir carpeta de ${selected.name}`, keywords: "explorador emulador", run: () => void openSdFolder(selected.path) },
         ]
@@ -660,6 +708,8 @@ function App() {
             onDismissError={() => setError("")}
             onSearchMissingCovers={artwork.searchMissingCovers}
             onChangeImage={startImage}
+            onEditGame={startEdit}
+            onOrganize={() => setModal("organize")}
             onRemoveGame={removeGameFromCatalog}
           />
         )}
@@ -706,6 +756,30 @@ function App() {
           onDraftClearImage={clearDraftImage}
           onToggleNote={toggleNote}
           onSave={saveNewGames}
+        />
+      )}
+
+      {modal === "edit" && targetGame && (
+        <EditGameModal
+          game={targetGame}
+          saga={sagaOverrides[targetGame.fileName]}
+          knownSagas={Array.from(
+            new Set(games.map((game) => sagaOf(game, sagaOverrides)).filter((s): s is string => Boolean(s))),
+          ).sort((a, b) => a.localeCompare(b, "es"))}
+          saving={loading}
+          onClose={() => setModal(null)}
+          onSave={saveGameEdit}
+        />
+      )}
+
+      {modal === "organize" && selected && (
+        <OrganizeModal
+          systemName={selected.name}
+          games={games}
+          overrides={sagaOverrides}
+          saving={loading}
+          onClose={() => setModal(null)}
+          onApply={applyOrganization}
         />
       )}
 

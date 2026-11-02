@@ -30,7 +30,7 @@ export type Note = {
 };
 export type Tab = "library" | "notes" | "settings";
 export type Filter = "all" | "missing";
-export type SortBy = "name" | "file";
+export type SortBy = "name" | "file" | "console";
 export type ViewMode = "grid" | "list";
 export type ImageStatus = "idle" | "searching" | "found" | "missing";
 

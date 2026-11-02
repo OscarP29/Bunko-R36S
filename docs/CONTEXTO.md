@@ -27,6 +27,8 @@ Aplicación de escritorio para Windows, hecha con Tauri 2, React y TypeScript, q
 
 - Añadir una ROM: se copia a la carpeta del sistema y se añade una fila al `filelist.csv`.
 - Si la ROM es un `.7z` (cualquier sistema salvo arcade) o un `.zip` en GBA/NES, el modal avisa de que no es recomendable y deja elegir entre extraerla al copiar o dejarla comprimida. En Configuración se puede activar «Extraer siempre». Solo se extraen comprimidos con un único archivo; los de varios (`.cue` + `.bin`) se rechazan con un mensaje.
+- Renombrar un juego cambia solo su título en `filelist.csv`; la ROM, la carátula y las partidas guardadas no se tocan.
+- «Organizar» reescribe el orden de `filelist.csv`, que es el que sigue la consola: alfabético o por sagas. Las sagas se detectan por el título (`src/lib/sagas.ts`) y se pueden elegir a mano al editar un juego; esas elecciones se guardan en `.r36s-manager-sagas.json` en la raíz de la tarjeta. El orden «Orden de la consola» de la biblioteca muestra el orden real del CSV.
 - Las carátulas se convierten en el backend Rust a PNG de 512 × 512 y se guardan en `images/`.
 - Para juegos existentes, el backend busca imágenes por nombre con y sin extensión dentro de `images/`. El contenido de la carpeta se indexa **una sola vez por sistema**, así que el tiempo de escaneo crece de forma lineal y no cuadrática.
 - Es posible quitar la entrada del catálogo. El archivo de ROM se conserva.

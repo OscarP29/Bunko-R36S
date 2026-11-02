@@ -1,4 +1,4 @@
-import { Check, Gamepad2, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Check, Gamepad2, Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
 import type { Game } from "../lib/types.ts";
 import { fileUrl } from "../lib/format.ts";
 
@@ -6,10 +6,11 @@ type GameCardProps = {
   game: Game;
   markedNoCover: boolean;
   onImage: () => void;
+  onEdit: () => void;
   onRemove: () => void;
 };
 
-export function GameCard({ game, markedNoCover, onImage, onRemove }: GameCardProps) {
+export function GameCard({ game, markedNoCover, onImage, onEdit, onRemove }: GameCardProps) {
   return (
     <article className="game-card">
       <div className={`game-cover ${game.hasImage ? "has-art" : "no-art"}`}>
@@ -48,7 +49,20 @@ export function GameCard({ game, markedNoCover, onImage, onRemove }: GameCardPro
           ) : (
             <span className="meta-missing">{markedNoCover ? "Sin carátula" : "Pendiente"}</span>
           )}
-          <button className="remove-game" title="Quitar del catálogo" onClick={onRemove}>
+          <button
+            className="edit-game"
+            title="Editar nombre y saga"
+            aria-label={`Editar ${game.title}`}
+            onClick={onEdit}
+          >
+            <Pencil size={13} />
+          </button>
+          <button
+            className="remove-game"
+            title="Quitar del catálogo"
+            aria-label={`Quitar ${game.title} del catálogo`}
+            onClick={onRemove}
+          >
             <Trash2 size={13} />
           </button>
         </div>

@@ -12,6 +12,8 @@ use tauri::{AppHandle, Manager, State};
 /// Tamaño final de todas las carátulas guardadas en la microSD.
 const COVER_SIZE: u32 = 512;
 const NOTES_FILE: &str = ".r36s-manager-notes.json";
+/// Sagas asignadas a mano, por carpeta de sistema y archivo de juego.
+const SAGAS_FILE: &str = ".r36s-manager-sagas.json";
 const FILELIST: &str = "filelist.csv";
 
 #[derive(Serialize, Clone)]
@@ -577,6 +579,42 @@ fn remove_game_impl(dir: &Path, file_name: &str) -> Result<(), String> {
     write_atomic_with_backup(&dir.join(FILELIST), &csv_bytes)
 }
 
+/// Cambia el título que muestra la consola. El archivo de ROM no se toca.
+fn rename_game_impl(dir: &Path, file_name: &str, title: &str) -> Result<(), String> {
+    let title = title.trim();
+    if title.is_empty() {
+        return Err("El nombre no puede estar vacío".into());
+    }
+    let mut rows = parse_rows(&dir.join(FILELIST))?;
+    let row = rows
+        .iter_mut()
+        .find(|(file, _)| file == file_name)
+        .ok_or("No se encontró el juego en filelist.csv")?;
+    row.1 = title.to_string();
+    let csv_bytes = serialize_rows(&rows)?;
+    write_atomic_with_backup(&dir.join(FILELIST), &csv_bytes)
+}
+
+/// Reescribe `filelist.csv` en el orden de `order`, que es el que sigue la
+/// consola. Tiene que contener exactamente los mismos juegos del catálogo.
+fn reorder_games_impl(dir: &Path, order: &[String]) -> Result<(), String> {
+    let rows = parse_rows(&dir.join(FILELIST))?;
+    let mut by_file: HashMap<&str, &(String, String)> =
+        rows.iter().map(|row| (row.0.as_str(), row)).collect();
+    if order.len() != rows.len() {
+        return Err("El orden no coincide con el catálogo; vuelve a cargar el sistema".into());
+    }
+    let mut sorted = Vec::with_capacity(rows.len());
+    for file in order {
+        let row = by_file
+            .remove(file.as_str())
+            .ok_or("El orden no coincide con el catálogo; vuelve a cargar el sistema")?;
+        sorted.push(row.clone());
+    }
+    let csv_bytes = serialize_rows(&sorted)?;
+    write_atomic_with_backup(&dir.join(FILELIST), &csv_bytes)
+}
+
 // ---------------------------------------------------------------------------
 // Comandos
 // ---------------------------------------------------------------------------
@@ -624,6 +662,27 @@ fn remove_game(
 ) -> Result<(), String> {
     let _disk = disk_write(&state)?;
     remove_game_impl(&require_system(&state, &system_path)?, &file_name)
+}
+
+#[tauri::command(async)]
+fn rename_game(
+    state: State<AppState>,
+    system_path: String,
+    file_name: String,
+    title: String,
+) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    rename_game_impl(&require_system(&state, &system_path)?, &file_name, &title)
+}
+
+#[tauri::command(async)]
+fn reorder_games(
+    state: State<AppState>,
+    system_path: String,
+    order: Vec<String>,
+) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    reorder_games_impl(&require_system(&state, &system_path)?, &order)
 }
 
 #[tauri::command(async)]
@@ -744,6 +803,24 @@ fn write_notes(state: State<AppState>, content: String) -> Result<(), String> {
 }
 
 #[tauri::command(async)]
+fn read_sagas(state: State<AppState>) -> Result<String, String> {
+    let _disk = disk_read(&state)?;
+    let path = require_root(&state)?.join(SAGAS_FILE);
+    if !path.exists() {
+        return Ok(String::new());
+    }
+    fs::read_to_string(path).map_err(|e| format!("No se pudieron leer las sagas: {e}"))
+}
+
+#[tauri::command(async)]
+fn write_sagas(state: State<AppState>, content: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    let root = require_root(&state)?;
+    write_atomic(&root.join(SAGAS_FILE), content.as_bytes())
+        .map_err(|e| format!("No se pudieron guardar las sagas: {e}"))
+}
+
+#[tauri::command(async)]
 fn unmount_sd(app: AppHandle, state: State<AppState>) -> Result<(), String> {
     // Espera a que terminen las escrituras en curso antes de liberar la tarjeta.
     let _disk = disk_write(&state)?;
@@ -826,11 +903,15 @@ pub fn run() {
             list_games,
             add_games,
             remove_game,
+            rename_game,
+            reorder_games,
             save_image,
             open_folder,
             disk_space,
             read_notes,
             write_notes,
+            read_sagas,
+            write_sagas,
             read_cache,
             write_cache,
             unmount_sd
@@ -1153,6 +1234,48 @@ mod tests {
         fs::create_dir_all(&inside).unwrap();
         fs::write(inside.join("filelist.csv"), b"").unwrap();
         assert!(path_within(root.path(), &inside).is_ok());
+    }
+
+    #[test]
+    fn rename_game_cambia_solo_el_titulo() {
+        let dir = system_dir("rename");
+        rename_game_impl(dir.path(), "Juego A.gba", "  Nuevo nombre ").unwrap();
+        let rows = parse_rows(&dir.path().join(FILELIST)).unwrap();
+        assert_eq!(rows, vec![("Juego A.gba".to_string(), "Nuevo nombre".to_string())]);
+        assert!(dir.path().join("Juego A.gba").is_file());
+        assert!(rename_game_impl(dir.path(), "Juego A.gba", "  ").is_err());
+        assert!(rename_game_impl(dir.path(), "No existe.gba", "X").is_err());
+    }
+
+    #[test]
+    fn reorder_games_reescribe_el_csv_en_el_orden_pedido() {
+        let dir = system_dir("reorder");
+        fs::write(dir.path().join(FILELIST), "a.gba,Alpha
+b.gba,Beta
+c.gba,Gamma
+").unwrap();
+        let order: Vec<String> = ["c.gba", "a.gba", "b.gba"].map(String::from).to_vec();
+        reorder_games_impl(dir.path(), &order).unwrap();
+        let files: Vec<String> = parse_rows(&dir.path().join(FILELIST))
+            .unwrap()
+            .into_iter()
+            .map(|(file, _)| file)
+            .collect();
+        assert_eq!(files, order);
+    }
+
+    #[test]
+    fn reorder_games_rechaza_un_orden_incompleto_o_repetido() {
+        let dir = system_dir("reorder-bad");
+        fs::write(dir.path().join(FILELIST), "a.gba,Alpha
+b.gba,Beta
+").unwrap();
+        let before = fs::read_to_string(dir.path().join(FILELIST)).unwrap();
+        for order in [vec!["a.gba"], vec!["a.gba", "a.gba"], vec!["a.gba", "x.gba"]] {
+            let order: Vec<String> = order.into_iter().map(String::from).collect();
+            assert!(reorder_games_impl(dir.path(), &order).is_err());
+        }
+        assert_eq!(fs::read_to_string(dir.path().join(FILELIST)).unwrap(), before);
     }
 
     fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {

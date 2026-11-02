@@ -9,6 +9,7 @@ import {
   HardDrive,
   Image as ImageIcon,
   LayoutGrid,
+  ListOrdered,
   LoaderCircle,
   Plus,
   Search,
@@ -20,7 +21,19 @@ import { GameCard } from "../components/GameCard.tsx";
 import { Skeleton } from "../components/ui/Skeleton.tsx";
 import type { LibraryView } from "../hooks/useLibraryView.ts";
 import { formatSize } from "../lib/format.ts";
-import type { Game, System, ViewMode } from "../lib/types.ts";
+import type { Game, SortBy, System, ViewMode } from "../lib/types.ts";
+
+const SORT_LABELS: Record<SortBy, string> = {
+  name: "Nombre",
+  file: "Archivo",
+  console: "Orden de la consola",
+};
+
+const NEXT_SORT: Record<SortBy, SortBy> = {
+  name: "file",
+  file: "console",
+  console: "name",
+};
 
 function GamesSkeleton({ viewMode }: { viewMode: ViewMode }) {
   return (
@@ -61,6 +74,8 @@ type LibraryPageProps = {
   onDismissError: () => void;
   onSearchMissingCovers: () => void;
   onChangeImage: (game: Game) => void;
+  onEditGame: (game: Game) => void;
+  onOrganize: () => void;
   onRemoveGame: (game: Game) => void;
 };
 
@@ -81,6 +96,8 @@ export function LibraryPage({
   onDismissError,
   onSearchMissingCovers,
   onChangeImage,
+  onEditGame,
+  onOrganize,
   onRemoveGame,
 }: LibraryPageProps) {
   const {
@@ -148,6 +165,11 @@ export function LibraryPage({
                     onClick={() => onOpenFolder(selected.path)}
                   >
                     <FolderOpen size={14} /> Abrir emulador
+                  </Button>
+                )}
+                {selected && (
+                  <Button onClick={onOrganize} disabled={!selected.gameCount}>
+                    <ListOrdered size={14} /> Organizar
                   </Button>
                 )}
                 <Button
@@ -277,15 +299,11 @@ export function LibraryPage({
                   </div>
                   <Button
                     className="sort-button"
-                    onClick={() =>
-                      setSortBy((value) =>
-                        value === "name" ? "file" : "name",
-                      )
-                    }
+                    onClick={() => setSortBy((value) => NEXT_SORT[value])}
                     title="Cambiar orden"
                   >
                     <ArrowUpDown size={13} />
-                    {sortBy === "name" ? "Nombre" : "Archivo"}
+                    {SORT_LABELS[sortBy]}
                   </Button>
                   <Button
                     className="view-toggle"
@@ -343,6 +361,7 @@ export function LibraryPage({
                         key={game.id}
                         game={game}
                         onImage={() => onChangeImage(game)}
+                        onEdit={() => onEditGame(game)}
                         onRemove={() => onRemoveGame(game)}
                         markedNoCover={markedNoCover.includes(game.fileName)}
                       />

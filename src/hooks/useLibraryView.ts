@@ -19,11 +19,14 @@ export function useLibraryView(games: Game[]) {
           return matches && (filter === "all" || !game.hasImage);
         })
         .sort((a, b) =>
-          sortBy === "name"
-            ? a.title.localeCompare(b.title, "es", { sensitivity: "base" })
-            : a.fileName.localeCompare(b.fileName, "es", {
-                sensitivity: "base",
-              }),
+          // `console` conserva el orden de filelist.csv, que es el de la consola.
+          sortBy === "console"
+            ? 0
+            : sortBy === "name"
+              ? a.title.localeCompare(b.title, "es", { sensitivity: "base" })
+              : a.fileName.localeCompare(b.fileName, "es", {
+                  sensitivity: "base",
+                }),
         ),
     [games, search, filter, sortBy],
   );
