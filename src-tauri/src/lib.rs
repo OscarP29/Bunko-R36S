@@ -9,6 +9,8 @@ use std::{
 };
 use tauri::{AppHandle, Manager, State};
 
+mod backgrounds;
+mod logos;
 mod look;
 mod saves;
 
@@ -971,6 +973,59 @@ fn restore_console_sound(state: State<AppState>, work_dir: String, slot: String)
 }
 
 #[tauri::command(async)]
+fn console_backgrounds(state: State<AppState>, work_dir: String) -> Result<Vec<backgrounds::Background>, String> {
+    let _disk = disk_read(&state)?;
+    backgrounds::list_backgrounds(&require_root(&state)?, &work_dir)
+}
+
+#[tauri::command(async)]
+fn console_background_preview(state: State<AppState>, name: String) -> Result<tauri::ipc::Response, String> {
+    let _disk = disk_read(&state)?;
+    Ok(tauri::ipc::Response::new(backgrounds::background_preview(&require_root(&state)?, &name)?))
+}
+
+#[tauri::command(async)]
+fn replace_console_background(
+    state: State<AppState>,
+    work_dir: String,
+    name: String,
+    source_path: String,
+) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    backgrounds::replace_background(&require_root(&state)?, &work_dir, &name, Path::new(&source_path))
+}
+
+#[tauri::command(async)]
+fn restore_console_background(state: State<AppState>, work_dir: String, name: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    backgrounds::restore_background(&require_root(&state)?, &work_dir, &name)
+}
+
+#[tauri::command(async)]
+fn console_logos(state: State<AppState>, work_dir: String) -> Result<Vec<logos::Logo>, String> {
+    let _disk = disk_read(&state)?;
+    logos::list_logos(&require_root(&state)?, &work_dir)
+}
+
+#[tauri::command(async)]
+fn console_logo_preview(state: State<AppState>, id: String) -> Result<tauri::ipc::Response, String> {
+    let _disk = disk_read(&state)?;
+    Ok(tauri::ipc::Response::new(logos::logo_preview(&require_root(&state)?, &id)?))
+}
+
+#[tauri::command(async)]
+fn replace_console_logo(state: State<AppState>, work_dir: String, id: String, source_path: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    logos::replace_logo(&require_root(&state)?, &work_dir, &id, Path::new(&source_path))
+}
+
+#[tauri::command(async)]
+fn restore_console_logo(state: State<AppState>, work_dir: String, id: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    logos::restore_logo(&require_root(&state)?, &work_dir, &id)
+}
+
+#[tauri::command(async)]
 fn read_sagas(state: State<AppState>) -> Result<String, String> {
     let _disk = disk_read(&state)?;
     let path = require_root(&state)?.join(SAGAS_FILE);
@@ -1092,6 +1147,14 @@ pub fn run() {
             read_console_sound,
             replace_console_sound,
             restore_console_sound,
+            console_backgrounds,
+            console_background_preview,
+            replace_console_background,
+            restore_console_background,
+            console_logos,
+            console_logo_preview,
+            replace_console_logo,
+            restore_console_logo,
             read_sagas,
             write_sagas,
             read_cache,

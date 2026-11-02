@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, FolderOpen, History, LoaderCircle, Save, Trash2 } from "lucide-react";
 import { BackupModal } from "../components/BackupModal.tsx";
+import { ConsoleBackgrounds } from "../components/ConsoleBackgrounds.tsx";
+import { ConsoleLogos } from "../components/ConsoleLogos.tsx";
 import { ConsoleSounds } from "../components/ConsoleSounds.tsx";
 import { RestoreModal } from "../components/RestoreModal.tsx";
 import { Button } from "../components/ui/Button.tsx";
 import { Segmented } from "../components/ui/Segmented.tsx";
 import type { CardState } from "../hooks/useCard.ts";
 import type { SavesState } from "../hooks/useSaves.ts";
+import { useSectionIndex } from "../hooks/useSectionIndex.ts";
 import { CONSOLE_PROFILES, consoleProfile } from "../lib/consoles.ts";
 import { formatBytes, formatSize } from "../lib/format.ts";
 import { PALETTE_SHORTCUT } from "../hooks/useShortcuts.ts";
@@ -42,6 +45,16 @@ const TAB_OPTIONS: { value: SettingsTab; label: string }[] = [
   { value: "console", label: "Consola" },
 ];
 
+/** Índice de la pestaña Consola: el `id` del título de cada sección. */
+const CONSOLE_SECTIONS = [
+  { value: "settings-console", label: "Consola" },
+  { value: "settings-console-sounds", label: "Sonidos" },
+  { value: "settings-console-backgrounds", label: "Fondos" },
+  { value: "settings-console-logos", label: "Logos" },
+  { value: "settings-backups", label: "Copias" },
+];
+const CONSOLE_SECTION_IDS = CONSOLE_SECTIONS.map((section) => section.value);
+
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "light", label: "Claro" },
   { value: "dark", label: "Oscuro" },
@@ -67,6 +80,7 @@ export function SettingsPage({
 }: SettingsPageProps) {
   const [tab, setTab] = useState<SettingsTab>("bunko");
   const [modal, setModal] = useState<"backup" | "restore" | null>(null);
+  const index = useSectionIndex(CONSOLE_SECTION_IDS, tab === "console");
   const profile = consoleProfile(card.card?.profile);
   const { summary, busy, result } = saves;
 
@@ -95,13 +109,21 @@ export function SettingsPage({
         </div>
       </section>
 
-      <div className="settings-tabs">
+      <div className="settings-tabs" ref={index.bar}>
         <Segmented
           label="Sección de configuración"
           value={tab}
           options={TAB_OPTIONS}
           onChange={setTab}
         />
+        {tab === "console" && (
+          <Segmented
+            label="Ir a una sección"
+            value={index.active}
+            options={CONSOLE_SECTIONS}
+            onChange={index.go}
+          />
+        )}
       </div>
 
       {tab === "bunko" ? (
@@ -263,6 +285,28 @@ export function SettingsPage({
           !card.card
             ? "Conecta la microSD para cambiar los sonidos de su consola."
             : "Este modelo todavía no permite cambiar los sonidos."
+        }
+      />
+
+      <ConsoleBackgrounds
+        enabled={saves.ready}
+        cardId={card.card?.id}
+        workDir={saves.effectiveWorkDir}
+        disabledReason={
+          !card.card
+            ? "Conecta la microSD para cambiar los fondos de su consola."
+            : "Este modelo todavía no permite cambiar los fondos."
+        }
+      />
+
+      <ConsoleLogos
+        enabled={saves.ready}
+        cardId={card.card?.id}
+        workDir={saves.effectiveWorkDir}
+        disabledReason={
+          !card.card
+            ? "Conecta la microSD para cambiar los logos de su consola."
+            : "Este modelo todavía no permite cambiar los logos."
         }
       />
 

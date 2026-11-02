@@ -159,3 +159,33 @@ export const replaceConsoleSound = (
 
 export const restoreConsoleSound = (workDir: string, slot: string) =>
   invoke<void>("restore_console_sound", { workDir, slot });
+
+/** Fondo de pantalla completa de `cubegm/UI_Res.cpd`. */
+export type ConsoleBackground = { name: string; customized: boolean };
+
+export const consoleBackgrounds = (workDir: string) =>
+  invoke<ConsoleBackground[]>("console_backgrounds", { workDir });
+
+/** Miniatura JPEG de 320×240. */
+export const consoleBackgroundPreview = (name: string) =>
+  invoke<ArrayBuffer>("console_background_preview", { name });
+
+export const replaceConsoleBackground = (workDir: string, name: string, sourcePath: string) =>
+  invoke<void>("replace_console_background", { workDir, name, sourcePath });
+
+export const restoreConsoleBackground = (workDir: string, name: string) =>
+  invoke<void>("restore_console_background", { workDir, name });
+
+/** Logo de arranque (`boot`) o apagado (`poweroff`) de la consola. */
+export type ConsoleLogo = { id: string; file: string; width: number; height: number; customized: boolean };
+
+export const consoleLogos = (workDir: string) => invoke<ConsoleLogo[]>("console_logos", { workDir });
+
+/** El logo en PNG, a su tamaño real. */
+export const consoleLogoPreview = (id: string) => invoke<ArrayBuffer>("console_logo_preview", { id });
+
+export const replaceConsoleLogo = (workDir: string, id: string, sourcePath: string) =>
+  invoke<void>("replace_console_logo", { workDir, id, sourcePath });
+
+export const restoreConsoleLogo = (workDir: string, id: string) =>
+  invoke<void>("restore_console_logo", { workDir, id });

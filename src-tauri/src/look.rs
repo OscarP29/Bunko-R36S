@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
 
 const SETTINGS_FILE: &str = "cubegm/setting.xml";
-const CUBEGM_DIR: &str = "cubegm";
+pub(crate) const CUBEGM_DIR: &str = "cubegm";
 const ORIGINALS_DIR: &str = "consola-original";
 const ORIGINALS_MANIFEST: &str = "originales.json";
 /// Los efectos del menú duran menos de un segundo; esto da margen de sobra.
@@ -33,9 +33,12 @@ pub struct SoundSlot {
 /// Originales guardados: archivo → si existía antes del primer cambio.
 #[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
-struct Originals {
+pub(crate) struct Originals {
     card_id: String,
-    files: HashMap<String, bool>,
+    pub(crate) files: HashMap<String, bool>,
+    /// Fondos de `UI_Res.cpd` cambiados; el original completo está en la carpeta.
+    #[serde(default)]
+    pub(crate) backgrounds: Vec<String>,
 }
 
 /// Nombre de archivo simple dentro de `cubegm/`, sin rutas.
@@ -92,21 +95,21 @@ fn slot_file(root: &Path, slot: &str) -> Result<String, String> {
         .ok_or_else(|| format!("La consola no tiene el sonido {slot}"))
 }
 
-fn read_originals(folder: &Path, card_id: &str) -> Originals {
+pub(crate) fn read_originals(folder: &Path, card_id: &str) -> Originals {
     fs::read(folder.join(ORIGINALS_MANIFEST))
         .ok()
         .and_then(|bytes| serde_json::from_slice::<Originals>(&bytes).ok())
         .filter(|originals| originals.card_id == card_id)
-        .unwrap_or_else(|| Originals { card_id: card_id.to_string(), files: HashMap::new() })
+        .unwrap_or_else(|| Originals { card_id: card_id.to_string(), ..Originals::default() })
 }
 
-fn write_originals(folder: &Path, originals: &Originals) -> Result<(), String> {
+pub(crate) fn write_originals(folder: &Path, originals: &Originals) -> Result<(), String> {
     let json = serde_json::to_vec_pretty(originals).map_err(|e| e.to_string())?;
     write_atomic(&folder.join(ORIGINALS_MANIFEST), &json)
 }
 
 /// Carpeta de originales de esta tarjeta y su id.
-fn originals_folder(root: &Path, work_dir: &str) -> Result<(std::path::PathBuf, String), String> {
+pub(crate) fn originals_folder(root: &Path, work_dir: &str) -> Result<(std::path::PathBuf, String), String> {
     let card = read_or_create_card(root)?;
     Ok((card_folder(root, work_dir, &card)?.join(ORIGINALS_DIR), card.id))
 }
@@ -184,20 +187,7 @@ pub fn replace_sound(root: &Path, work_dir: &str, slot: &str, bytes: &[u8]) -> R
         }
         check_wav(bytes)?;
     }
-    let (folder, card_id) = originals_folder(root, work_dir)?;
-    let mut originals = read_originals(&folder, &card_id);
-    let target = root.join(CUBEGM_DIR).join(&file);
-    if !originals.files.contains_key(&file) {
-        fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta de originales: {e}"))?;
-        let existed = target.is_file();
-        if existed {
-            fs::copy(&target, folder.join(&file))
-                .map_err(|e| format!("No se pudo guardar el original de {file}: {e}"))?;
-        }
-        originals.files.insert(file.clone(), existed);
-        write_originals(&folder, &originals)?;
-    }
-    write_atomic(&target, bytes)?;
+    replace_file(root, work_dir, &file, bytes)?;
     Ok(SoundSlot {
         slot: slot.to_string(),
         bytes: bytes.len() as u64,
@@ -208,21 +198,43 @@ pub fn replace_sound(root: &Path, work_dir: &str, slot: &str, bytes: &[u8]) -> R
 }
 
 pub fn restore_sound(root: &Path, work_dir: &str, slot: &str) -> Result<(), String> {
-    let file = slot_file(root, slot)?;
+    restore_file(root, work_dir, &slot_file(root, slot)?)
+}
+
+/// Escribe `cubegm/<file>`; la primera vez guarda antes el original (o que no existía).
+pub(crate) fn replace_file(root: &Path, work_dir: &str, file: &str, bytes: &[u8]) -> Result<(), String> {
     let (folder, card_id) = originals_folder(root, work_dir)?;
     let mut originals = read_originals(&folder, &card_id);
-    let Some(existed) = originals.files.get(&file).copied() else {
+    let target = root.join(CUBEGM_DIR).join(file);
+    if !originals.files.contains_key(file) {
+        fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta de originales: {e}"))?;
+        let existed = target.is_file();
+        if existed {
+            fs::copy(&target, folder.join(file))
+                .map_err(|e| format!("No se pudo guardar el original de {file}: {e}"))?;
+        }
+        originals.files.insert(file.to_string(), existed);
+        write_originals(&folder, &originals)?;
+    }
+    write_atomic(&target, bytes)
+}
+
+/// Devuelve `cubegm/<file>` a como estaba antes del primer cambio de Bunko.
+pub(crate) fn restore_file(root: &Path, work_dir: &str, file: &str) -> Result<(), String> {
+    let (folder, card_id) = originals_folder(root, work_dir)?;
+    let mut originals = read_originals(&folder, &card_id);
+    let Some(existed) = originals.files.get(file).copied() else {
         return Err(format!("{file} ya es el original"));
     };
-    let target = root.join(CUBEGM_DIR).join(&file);
+    let target = root.join(CUBEGM_DIR).join(file);
     if existed {
-        let original = fs::read(folder.join(&file))
+        let original = fs::read(folder.join(file))
             .map_err(|e| format!("No se encontró el original de {file}: {e}"))?;
         write_atomic(&target, &original)?;
     } else if target.exists() {
         fs::remove_file(&target).map_err(|e| format!("No se pudo quitar {file}: {e}"))?;
     }
-    originals.files.remove(&file);
+    originals.files.remove(file);
     write_originals(&folder, &originals)
 }
 
