@@ -1,4 +1,6 @@
 import { Segmented } from "../components/ui/Segmented.tsx";
+import { PALETTE_SHORTCUT } from "../hooks/useShortcuts.ts";
+import { formatShortcut, type Command } from "../lib/commands.ts";
 import {
   FONT_SCALES,
   type Settings,
@@ -14,9 +16,14 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
 type SettingsPageProps = {
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
+  commands: Command[];
 };
 
-export function SettingsPage({ settings, updateSettings }: SettingsPageProps) {
+export function SettingsPage({
+  settings,
+  updateSettings,
+  commands,
+}: SettingsPageProps) {
   return (
     <div className="content settings-content">
       <section className="page-heading">
@@ -59,6 +66,28 @@ export function SettingsPage({ settings, updateSettings }: SettingsPageProps) {
             onChange={(theme) => updateSettings({ theme })}
           />
         </div>
+      </section>
+
+      <section className="settings-card" aria-labelledby="settings-shortcuts">
+        <h2 id="settings-shortcuts">Atajos de teclado</h2>
+        <dl className="settings-shortcuts">
+          <div>
+            <dt>Abrir comandos</dt>
+            <dd>
+              <kbd>{formatShortcut(PALETTE_SHORTCUT)}</kbd>
+            </dd>
+          </div>
+          {commands
+            .filter((command) => command.shortcut)
+            .map((command) => (
+              <div key={command.id}>
+                <dt>{command.label}</dt>
+                <dd>
+                  <kbd>{formatShortcut(command.shortcut!)}</kbd>
+                </dd>
+              </div>
+            ))}
+        </dl>
       </section>
     </div>
   );

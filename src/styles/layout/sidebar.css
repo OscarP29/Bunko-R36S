@@ -8,7 +8,7 @@
   font: 700 42px/1 var(--display);
   letter-spacing: .02em;
   text-align: center;
-  text-shadow: 3px 3px 0 var(--purple);
+  text-shadow: 3px 3px 0 var(--brand-shadow);
 }
 
 .nav-item span:nth-child(2) {
@@ -217,6 +217,7 @@
 }
 
 .storage-card {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -282,4 +283,41 @@
 .nav-item.active .nav-count,
 .system-item.selected .system-count {
   color: inherit;
+}
+
+.storage-space {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 6px;
+}
+
+.storage-bar {
+  height: 10px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.storage-bar i {
+  display: block;
+  height: 100%;
+  background: var(--purple);
+}
+
+.storage-bar.full i {
+  background: #f4b66c;
+}
+
+.storage-amounts {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: calc(10px * var(--font-scale));
+}
+
+.storage-amounts strong {
+  font-weight: 700;
+}
+
+.storage-amounts span {
+  color: var(--muted);
 }

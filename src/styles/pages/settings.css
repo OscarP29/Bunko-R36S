@@ -39,3 +39,31 @@
   color: var(--muted);
   font-size: calc(14px * var(--font-scale));
 }
+
+.settings-content .settings-card + .settings-card {
+  margin-top: 24px;
+}
+
+.settings-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.settings-shortcuts > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+}
+
+.settings-shortcuts dt {
+  color: var(--text);
+  font-size: calc(14px * var(--font-scale));
+}
+
+.settings-shortcuts dd {
+  margin: 0;
+}

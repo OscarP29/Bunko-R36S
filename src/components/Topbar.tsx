@@ -1,5 +1,6 @@
 import {
   ChevronRight,
+  Command,
   LogOut,
   LoaderCircle,
   RefreshCw,
@@ -15,6 +16,7 @@ type TopbarProps = {
   ejecting: boolean;
   onRescan: () => void;
   onEject: () => void;
+  onOpenCommands: () => void;
 };
 
 export function Topbar({
@@ -25,6 +27,7 @@ export function Topbar({
   ejecting,
   onRescan,
   onEject,
+  onOpenCommands,
 }: TopbarProps) {
   return (
       <header className="topbar">
@@ -44,6 +47,9 @@ export function Topbar({
             <span className={`connection-dot ${root ? "on" : ""}`} />
             {root ? "MicroSD lista" : "Sin conexión"}
           </div>
+          <IconButton label="Comandos (Ctrl K)" onClick={onOpenCommands}>
+            <Command size={15} />
+          </IconButton>
           <IconButton
             label="Volver a escanear"
             onClick={onRescan}

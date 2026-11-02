@@ -5,14 +5,17 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { CheckCircle2 } from "lucide-react";
 import { AddGameModal } from "./components/AddGameModal.tsx";
 import { ArtworkModal } from "./components/ArtworkModal.tsx";
+import { CommandPalette } from "./components/CommandPalette.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
 import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
 import { useNotesView } from "./hooks/useNotesView.ts";
 import { useSettings } from "./hooks/useSettings.ts";
+import { useShortcuts } from "./hooks/useShortcuts.ts";
 import {
   addGames,
+  getDiskSpace,
   listGames,
   openFolder,
   readNotes,
@@ -21,8 +24,11 @@ import {
   scanSd,
   unmountSd,
   writeNotes,
+  type DiskSpace,
 } from "./lib/backend.ts";
+import type { Command } from "./lib/commands.ts";
 import { cleanTitle, systemFolder } from "./lib/rom.ts";
+import { stepFontScale } from "./lib/settings.ts";
 import type {
   FullEntry,
   Game,
@@ -43,7 +49,14 @@ function App() {
   const [selected, setSelected] = useState<System | null>(null);
   const [games, setGames] = useState<Game[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>("library");
-  const [loading, setLoading] = useState(false);
+  // Con una raíz recordada el escaneo arranca al montar: evita mostrar "sin sistemas".
+  const [loading, setLoading] = useState(() =>
+    Boolean(localStorage.getItem(ROOT_KEY)),
+  );
+  const [loadingGames, setLoadingGames] = useState(false);
+  /** Raíz ya registrada en Rust: antes de eso `read_notes` fallaría. */
+  const [scannedRoot, setScannedRoot] = useState("");
+  const [diskSpace, setDiskSpace] = useState<DiskSpace | null>(null);
   const [error, setError] = useState("");
   const [modal, setModal] = useState<"add" | "image" | null>(null);
   const [targetGame, setTargetGame] = useState<Game | null>(null);
@@ -56,9 +69,12 @@ function App() {
   const [notice, setNotice] = useState("");
   /** Raíz cuyas notas están cargadas: evita copiar la libreta a otra tarjeta. */
   const notesRoot = useRef("");
+  /** Cola de escrituras: los comandos son concurrentes y las notas deben guardarse en orden. */
+  const notesWrites = useRef<Promise<void>>(Promise.resolve());
   const libraryView = useLibraryView(games);
   const notesView = useNotesView(notes, addNote);
   const settings = useSettings();
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const artwork = useArtworkSearch({
     selected,
     games,
@@ -75,7 +91,7 @@ function App() {
     if (isTauri() && !root) return;
     const payload = JSON.stringify(notes);
     if (isTauri() && root) {
-      writeNotes(payload).catch(() => localStorage.setItem(NOTES_KEY, payload));
+      saveNotes(payload).catch(() => localStorage.setItem(NOTES_KEY, payload));
     } else {
       localStorage.setItem(NOTES_KEY, payload);
     }
@@ -106,6 +122,7 @@ function App() {
       setNotesLoaded(true);
       return;
     }
+    if (scannedRoot !== root) return;
     readNotes()
       .then((value) => {
         if (value) setNotes(JSON.parse(value));
@@ -113,7 +130,22 @@ function App() {
         setNotesLoaded(true);
       })
       .catch(() => setNotesLoaded(true));
-  }, [root]);
+  }, [root, scannedRoot]);
+
+  // Cada cambio en la tarjeta acaba reescaneando `systems`: es el momento de releerlo.
+  useEffect(() => {
+    if (!isTauri() || !root || scannedRoot !== root) {
+      setDiskSpace(null);
+      return;
+    }
+    let current = true;
+    getDiskSpace()
+      .then((space) => current && setDiskSpace(space))
+      .catch(() => current && setDiskSpace(null));
+    return () => {
+      current = false;
+    };
+  }, [root, scannedRoot, systems]);
 
   useEffect(() => {
     if (!notice) return;
@@ -121,12 +153,21 @@ function App() {
     return () => clearTimeout(timer);
   }, [notice]);
 
+  function saveNotes(payload: string) {
+    const write = notesWrites.current
+      .catch(() => {})
+      .then(() => writeNotes(payload));
+    notesWrites.current = write;
+    return write;
+  }
+
   async function scan(path = root) {
     if (!path) return;
     setLoading(true);
     setError("");
     try {
       const result = await scanSd(path);
+      setScannedRoot(path);
       setRoot(path);
       localStorage.setItem(ROOT_KEY, path);
       setSystems(result);
@@ -143,6 +184,7 @@ function App() {
       }
     } catch (e) {
       setError(String(e));
+      setScannedRoot(path);
       setSystems([]);
       setGames([]);
     } finally {
@@ -153,11 +195,14 @@ function App() {
   async function selectSystem(system: System) {
     setSelected(system);
     libraryView.resetFilters();
+    setLoadingGames(system.id !== selected?.id);
     try {
       setGames(await listGames(system.path));
       setError("");
     } catch (e) {
       setError(String(e));
+    } finally {
+      setLoadingGames(false);
     }
   }
 
@@ -185,7 +230,7 @@ function App() {
     try {
       if (notesLoaded && notesRoot.current === root) {
         try {
-          await writeNotes(JSON.stringify(notes));
+          await saveNotes(JSON.stringify(notes));
         } catch {
           // Si falla, ya hay fallback a localStorage.
         }
@@ -464,13 +509,82 @@ function App() {
     setNotesLoaded(true);
   }
 
+  function clearNotes() {
+    if (
+      !confirm(
+        `¿Borrar los ${notes.length} juegos de la lista de pendientes? Esta acción no se puede deshacer.`,
+      )
+    )
+      return;
+    setNotes([]);
+    setNotesLoaded(true);
+    setNotice("Lista de pendientes vaciada");
+  }
+
   function handleGlobalKeys(event: React.KeyboardEvent<HTMLDivElement>) {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      document.querySelector<HTMLInputElement>(".search-box input")?.focus();
-    }
     if (event.key === "Escape" && modal) setModal(null);
   }
+
+  function focusPageSearch() {
+    const selector = ".search-box input, .notes-toolbar input";
+    const input = document.querySelector<HTMLInputElement>(selector);
+    if (input) return input.focus();
+    setActiveTab("library");
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLInputElement>(selector)?.focus(),
+    );
+  }
+
+  const openLibrary = (run: () => void) => () => {
+    setActiveTab("library");
+    run();
+  };
+
+  const commands: Command[] = [
+    { id: "go-library", group: "Ir a", label: "Biblioteca", shortcut: "Ctrl+1", run: () => setActiveTab("library") },
+    { id: "go-notes", group: "Ir a", label: "Lista de pendientes", shortcut: "Ctrl+2", run: () => setActiveTab("notes") },
+    { id: "go-settings", group: "Ir a", label: "Configuración", keywords: "ajustes opciones", shortcut: "Ctrl+3", run: () => setActiveTab("settings") },
+    { id: "search", group: "Acciones", label: "Buscar en la página", shortcut: "Ctrl+F", run: focusPageSearch },
+    ...(selected
+      ? [
+          { id: "add-game", group: "Acciones", label: "Añadir juegos", keywords: "rom nuevo", shortcut: "Ctrl+N", run: openLibrary(openAdd) },
+          { id: "missing-covers", group: "Acciones", label: "Buscar carátulas faltantes", keywords: "portadas imagenes", run: openLibrary(artwork.searchMissingCovers) },
+          { id: "open-system", group: "Acciones", label: `Abrir carpeta de ${selected.name}`, keywords: "explorador emulador", run: () => void openSdFolder(selected.path) },
+        ]
+      : []),
+    ...(notes.length
+      ? [{ id: "clear-notes", group: "Acciones", label: "Vaciar lista de pendientes", keywords: "borrar eliminar todo", run: clearNotes }]
+      : []),
+    ...(root
+      ? [
+          { id: "rescan", group: "Tarjeta", label: "Volver a escanear", keywords: "recargar actualizar", shortcut: "Ctrl+R", run: () => void scan() },
+          { id: "open-sd", group: "Tarjeta", label: "Abrir carpeta de la SD", keywords: "explorador microsd", run: () => void openSdFolder(root) },
+          { id: "eject", group: "Tarjeta", label: "Expulsar microSD", keywords: "sacar desconectar", run: () => void ejectSd() },
+        ]
+      : []),
+    { id: "choose-root", group: "Tarjeta", label: root ? "Cambiar tarjeta SD" : "Elegir carpeta ROMS", keywords: "microsd", run: () => void chooseRoot() },
+    { id: "theme-light", group: "Tema", label: "Tema claro", run: () => settings.updateSettings({ theme: "light" }) },
+    { id: "theme-dark", group: "Tema", label: "Tema oscuro", run: () => settings.updateSettings({ theme: "dark" }) },
+    { id: "theme-system", group: "Tema", label: "Tema del sistema", run: () => settings.updateSettings({ theme: "system" }) },
+    { id: "font-up", group: "Letra", label: "Aumentar letra", keywords: "tamaño fuente", shortcut: "Ctrl+Plus", run: () => settings.updateSettings({ fontScale: stepFontScale(settings.settings.fontScale, 1) }) },
+    { id: "font-down", group: "Letra", label: "Reducir letra", keywords: "tamaño fuente", shortcut: "Ctrl+Minus", run: () => settings.updateSettings({ fontScale: stepFontScale(settings.settings.fontScale, -1) }) },
+    ...systems.map((system) => ({
+      id: `system-${system.id}`,
+      group: "Sistemas",
+      label: system.name,
+      keywords: "emulador consola",
+      run: openLibrary(() => void selectSystem(system)),
+    })),
+    ...games.map((game) => ({
+      id: `game-${game.id}`,
+      group: "Carátula",
+      label: game.title,
+      keywords: game.fileName,
+      run: openLibrary(() => startImage(game)),
+    })),
+  ];
+
+  useShortcuts(commands, () => setPaletteOpen((open) => !open));
 
   const totalGames = systems.reduce(
     (total, system) => total + system.gameCount,
@@ -488,6 +602,8 @@ function App() {
         totalGames={totalGames}
         pendingNotes={pendingNotes}
         ejecting={ejecting}
+        scanning={loading}
+        diskSpace={diskSpace}
         onTabChange={setActiveTab}
         onSelectSystem={(system) => void selectSystem(system)}
         onOpenFolder={openSdFolder}
@@ -504,6 +620,7 @@ function App() {
           ejecting={ejecting}
           onRescan={() => scan()}
           onEject={ejectSd}
+          onOpenCommands={() => setPaletteOpen(true)}
         />
 
         {activeTab === "library" && (
@@ -514,6 +631,8 @@ function App() {
             selected={selected}
             totalGames={totalGames}
             error={error}
+            loadingSystems={loading && !systems.length}
+            loadingGames={loadingGames}
             batchProgress={artwork.batchProgress}
             markedNoCover={artwork.markedNoCover}
             onChooseRoot={chooseRoot}
@@ -525,11 +644,14 @@ function App() {
             onRemoveGame={removeGameFromCatalog}
           />
         )}
-        {activeTab === "settings" && <SettingsPage {...settings} />}
+        {activeTab === "settings" && (
+          <SettingsPage {...settings} commands={commands} />
+        )}
         {activeTab === "notes" && (
           <NotesPage
             view={notesView}
             notes={notes}
+            loading={!notesLoaded}
             pendingNotes={pendingNotes}
             systems={systems}
             fullLibrary={fullLibrary}
@@ -538,6 +660,7 @@ function App() {
             onImportAiItems={importAiItems}
             onToggleNote={toggleNote}
             onDeleteNote={deleteNote}
+            onClearNotes={clearNotes}
           />
         )}
       </main>
@@ -587,6 +710,13 @@ function App() {
           onSelectImage={artwork.selectImage}
           onSave={saveGameImage}
           onMarkNoCover={() => artwork.markNoCover(targetGame?.fileName)}
+        />
+      )}
+
+      {paletteOpen && (
+        <CommandPalette
+          commands={commands}
+          onClose={() => setPaletteOpen(false)}
         />
       )}
 

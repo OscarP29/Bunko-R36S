@@ -9,8 +9,37 @@ import {
   LoaderCircle,
   SlidersHorizontal,
 } from "lucide-react";
-import { formatSize } from "../lib/format.ts";
+import { Skeleton } from "./ui/Skeleton.tsx";
+import type { DiskSpace } from "../lib/backend.ts";
+import { formatBytes, formatSize } from "../lib/format.ts";
 import type { System, Tab } from "../lib/types.ts";
+
+/** Por encima de este uso, la barra avisa de que queda poco espacio. */
+const STORAGE_WARNING = 90;
+
+function StorageSpace({ space }: { space: DiskSpace }) {
+  const used = space.totalBytes
+    ? ((space.totalBytes - space.freeBytes) / space.totalBytes) * 100
+    : 0;
+  return (
+    <div className="storage-space">
+      <div
+        className={`storage-bar ${used >= STORAGE_WARNING ? "full" : ""}`}
+        role="progressbar"
+        aria-label="Espacio usado de la microSD"
+        aria-valuenow={Math.round(used)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <i style={{ width: `${used}%` }} />
+      </div>
+      <div className="storage-amounts">
+        <strong>{formatBytes(space.freeBytes)} libres</strong>
+        <span>de {formatBytes(space.totalBytes)}</span>
+      </div>
+    </div>
+  );
+}
 
 type SidebarProps = {
   activeTab: Tab;
@@ -20,6 +49,8 @@ type SidebarProps = {
   totalGames: number;
   pendingNotes: number;
   ejecting: boolean;
+  scanning: boolean;
+  diskSpace: DiskSpace | null;
   onTabChange: (tab: Tab) => void;
   onSelectSystem: (system: System) => void;
   onOpenFolder: (path: string) => void;
@@ -35,6 +66,8 @@ export function Sidebar({
   totalGames,
   pendingNotes,
   ejecting,
+  scanning,
+  diskSpace,
   onTabChange,
   onSelectSystem,
   onOpenFolder,
@@ -95,9 +128,16 @@ export function Sidebar({
                 </span>
               </button>
             ))}
-            {!systems.length && (
-              <p className="empty-systems">Conecta tu tarjeta para empezar</p>
-            )}
+            {!systems.length &&
+              (scanning ? (
+                Array.from({ length: 5 }, (_, index) => (
+                  <div className="system-item" key={index}>
+                    <Skeleton />
+                  </div>
+                ))
+              ) : (
+                <p className="empty-systems">Conecta tu tarjeta para empezar</p>
+              ))}
           </div>
         </div>
 
@@ -117,6 +157,7 @@ export function Sidebar({
               </span>
             </div>
             <span className={`connection-dot ${root ? "on" : ""}`} />
+            {diskSpace && <StorageSpace space={diskSpace} />}
           </div>
           {root && (
             <button

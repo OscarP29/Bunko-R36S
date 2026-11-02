@@ -124,7 +124,9 @@ Sombras solidas (sin blur, salvo decorativas del fondo): `2px 2px`, `3px 3px`,
 - Prohibido `!important`: si una regla no gana, ajusta su selector o su orden.
 - Usa `var(--token)` en vez de repetir un color que ya es token.
 - Componentes compartidos en `src/components/ui/`: `Button`, `IconButton`,
-  `Field`, `Chip`, `Segmented`, `ModalBackdrop` y `ModalHeader`. No escribas a mano
+  `Field`, `Chip`, `Segmented`, `Skeleton`, `ModalBackdrop` y `ModalHeader`.
+- Las acciones nuevas se registran en la lista `commands` de `App.tsx`: asi aparecen
+  en la paleta (`Ctrl K`), y si tienen `shortcut`, tambien en Configuracion. No escribas a mano
   `className="primary-button"` ni la cabecera de un modal.
 
 ### Boton
@@ -283,7 +285,8 @@ Las acciones de caratula van DEBAJO de la imagen, nunca superpuestas.
 
 ### Estado vacio / carga / error
 - Vacio: icono + titulo + texto explicativo + accion.
-- Carga: spinner + texto.
+- Carga: `Skeleton` con la forma del contenido cuando se conoce (listas, tarjetas);
+  spinner + texto para acciones puntuales.
 - Error: banner rojo con icono, texto y boton cerrar.
 
 ---

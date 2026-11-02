@@ -17,9 +17,32 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/Button.tsx";
 import { GameCard } from "../components/GameCard.tsx";
+import { Skeleton } from "../components/ui/Skeleton.tsx";
 import type { LibraryView } from "../hooks/useLibraryView.ts";
 import { formatSize } from "../lib/format.ts";
-import type { Game, System } from "../lib/types.ts";
+import type { Game, System, ViewMode } from "../lib/types.ts";
+
+function GamesSkeleton({ viewMode }: { viewMode: ViewMode }) {
+  return (
+    <div
+      className={`games-grid ${viewMode === "list" ? "list-mode" : ""}`}
+      role="status"
+      aria-label="Cargando juegos"
+    >
+      {Array.from({ length: 10 }, (_, index) => (
+        <article className="game-card" key={index}>
+          <div className="game-cover">
+            <Skeleton shape="fill" />
+          </div>
+          <div className="game-info skeleton-stack">
+            <Skeleton />
+            <Skeleton shape="line short" />
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
 
 type LibraryPageProps = {
   view: LibraryView;
@@ -28,6 +51,8 @@ type LibraryPageProps = {
   selected: System | null;
   totalGames: number;
   error: string;
+  loadingSystems: boolean;
+  loadingGames: boolean;
   batchProgress: { done: number; total: number } | null;
   markedNoCover: string[];
   onChooseRoot: () => void;
@@ -46,6 +71,8 @@ export function LibraryPage({
   selected,
   totalGames,
   error,
+  loadingSystems,
+  loadingGames,
   batchProgress,
   markedNoCover,
   onChooseRoot,
@@ -134,49 +161,63 @@ export function LibraryPage({
               </div>
             </section>
 
-            <section className="stats-row">
-              <div className="stat-card">
-                <div className="stat-icon purple">
-                  <Gamepad2 size={17} />
-                </div>
-                <div>
-                  <span>JUEGOS EN TOTAL</span>
-                  <strong>{formatSize(totalGames)}</strong>
-                  <small>en {systems.length} sistemas</small>
-                </div>
-                <div className="stat-spark">✦─✦╰✦╯✦</div>
+            {loadingSystems ? (
+              <div className="stats-row" role="status" aria-label="Cargando biblioteca">
+                {[0, 1, 2].map((index) => (
+                  <div className="stat-card" key={index}>
+                    <div className="skeleton-stack">
+                      <Skeleton />
+                      <Skeleton shape="title" />
+                      <Skeleton shape="line short" />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="stat-card">
-                <div className="stat-icon teal">
-                  <ImageIcon size={17} />
+            ) : (
+              <section className="stats-row">
+                <div className="stat-card">
+                  <div className="stat-icon purple">
+                    <Gamepad2 size={17} />
+                  </div>
+                  <div>
+                    <span>JUEGOS EN TOTAL</span>
+                    <strong>{formatSize(totalGames)}</strong>
+                    <small>en {systems.length} sistemas</small>
+                  </div>
+                  <div className="stat-spark">✦─✦╰✦╯✦</div>
                 </div>
-                <div>
-                  <span>CARÁTULAS PENDIENTES</span>
-                  <strong>{formatSize(noImageTotal)}</strong>
-                  <small>
-                    {noImageTotal
-                      ? "Algunos juegos esperan imagen"
-                      : "Toda la colección tiene imagen"}
-                  </small>
+                <div className="stat-card">
+                  <div className="stat-icon teal">
+                    <ImageIcon size={17} />
+                  </div>
+                  <div>
+                    <span>CARÁTULAS PENDIENTES</span>
+                    <strong>{formatSize(noImageTotal)}</strong>
+                    <small>
+                      {noImageTotal
+                        ? "Algunos juegos esperan imagen"
+                        : "Toda la colección tiene imagen"}
+                    </small>
+                  </div>
+                  <div className="stat-status">
+                    <span />
+                  </div>
                 </div>
-                <div className="stat-status">
-                  <span />
+                <div className="stat-card">
+                  <div className="stat-icon amber">
+                    <HardDrive size={17} />
+                  </div>
+                  <div>
+                    <span>SISTEMAS DETECTADOS</span>
+                    <strong>{systems.length}</strong>
+                    <small>carpetas de emuladores</small>
+                  </div>
+                  <div className="stat-device">
+                    <Disc3 size={29} />
+                  </div>
                 </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon amber">
-                  <HardDrive size={17} />
-                </div>
-                <div>
-                  <span>SISTEMAS DETECTADOS</span>
-                  <strong>{systems.length}</strong>
-                  <small>carpetas de emuladores</small>
-                </div>
-                <div className="stat-device">
-                  <Disc3 size={29} />
-                </div>
-              </div>
-            </section>
+              </section>
+            )}
 
             {error && (
               <div className="error-banner">
@@ -188,7 +229,9 @@ export function LibraryPage({
               </div>
             )}
 
-            {!systems.length ? (
+            {loadingSystems ? (
+              <GamesSkeleton viewMode={viewMode} />
+            ) : !systems.length ? (
               <div className="no-systems">
                 <Gamepad2 size={25} />
                 <div>
@@ -212,7 +255,7 @@ export function LibraryPage({
                       value={search}
                       onChange={(event) => setSearch(event.target.value)}
                     />
-                    <kbd>⌘ K</kbd>
+                    <kbd>Ctrl F</kbd>
                   </div>
                   <div className="filter-group">
                     <button
@@ -289,21 +332,25 @@ export function LibraryPage({
                   </div>
                 )}
 
-                <div
-                  className={`games-grid ${viewMode === "list" ? "list-mode" : ""}`}
-                >
-                  {visibleGames.map((game) => (
-                    <GameCard
-                      key={game.id}
-                      game={game}
-                      onImage={() => onChangeImage(game)}
-                      onRemove={() => onRemoveGame(game)}
-                      markedNoCover={markedNoCover.includes(game.fileName)}
-                    />
-                  ))}
-                </div>
+                {loadingGames ? (
+                  <GamesSkeleton viewMode={viewMode} />
+                ) : (
+                  <div
+                    className={`games-grid ${viewMode === "list" ? "list-mode" : ""}`}
+                  >
+                    {visibleGames.map((game) => (
+                      <GameCard
+                        key={game.id}
+                        game={game}
+                        onImage={() => onChangeImage(game)}
+                        onRemove={() => onRemoveGame(game)}
+                        markedNoCover={markedNoCover.includes(game.fileName)}
+                      />
+                    ))}
+                  </div>
+                )}
 
-                {!visibleGames.length && (
+                {!loadingGames && !visibleGames.length && (
                   <div className="empty-state">
                     <div>
                       <Search size={20} />

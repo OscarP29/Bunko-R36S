@@ -144,3 +144,52 @@
   font-size: calc(9px * var(--font-scale));
   margin-top: 8px;
 }
+
+@keyframes skeleton-pulse {
+  from {
+    opacity: .1;
+  }
+
+  to {
+    opacity: .24;
+  }
+}
+
+.skeleton {
+  display: block;
+  background: var(--line);
+  animation: skeleton-pulse .8s ease-in-out infinite alternate;
+}
+
+.skeleton.line {
+  width: 100%;
+  height: calc(11px * var(--font-scale));
+}
+
+.skeleton.short {
+  width: 55%;
+}
+
+.skeleton.title {
+  width: 40%;
+  height: calc(20px * var(--font-scale));
+}
+
+.skeleton.fill {
+  position: absolute;
+  inset: 0;
+}
+
+.skeleton-stack {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    opacity: .16;
+    animation: none;
+  }
+}

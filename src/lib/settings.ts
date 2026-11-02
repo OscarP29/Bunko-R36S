@@ -33,6 +33,13 @@ export function loadSettings(): Settings {
   };
 }
 
+/** Tamaño contiguo en `FONT_SCALES`; se queda en el extremo si no hay más. */
+export function stepFontScale(current: number, step: 1 | -1): number {
+  const index = FONT_SCALES.findIndex((scale) => scale.value === current);
+  const next = Math.min(Math.max(index + step, 0), FONT_SCALES.length - 1);
+  return FONT_SCALES[next].value;
+}
+
 export const saveSettings = (settings: Settings) =>
   writeLocalJson(SETTINGS_KEY, settings);
 

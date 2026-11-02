@@ -97,3 +97,11 @@
   padding: 2px 0;
   color: var(--accent-text);
 }
+
+.secondary-button.danger {
+  color: var(--error);
+}
+
+.secondary-button.danger:hover:not(:disabled) {
+  color: #7f1d1d;
+}

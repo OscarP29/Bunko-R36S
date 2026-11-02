@@ -1,0 +1,113 @@
+/* Paleta de comandos (ver CommandPalette.tsx). */
+
+.palette-backdrop {
+  z-index: 20;
+  align-items: start;
+  padding-top: 12vh;
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 92vw);
+  max-height: 70vh;
+}
+
+.palette-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 3px solid var(--line);
+  color: var(--muted);
+}
+
+.palette-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-size: calc(15px * var(--font-scale));
+}
+
+.palette-search input::placeholder {
+  color: var(--muted);
+}
+
+.palette-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.palette-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 6px 12px;
+  color: var(--text);
+  font-size: calc(14px * var(--font-scale));
+  cursor: pointer;
+}
+
+.palette-list li > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.palette-list li small {
+  flex: none;
+  color: var(--muted);
+  font-size: calc(12px * var(--font-scale));
+}
+
+.palette-list li.active {
+  background: var(--purple);
+  color: var(--on-purple);
+}
+
+.palette-list li.active small {
+  color: var(--on-purple);
+}
+
+.palette-empty {
+  margin: 0;
+  padding: 24px 16px;
+  color: var(--muted);
+  font-size: calc(14px * var(--font-scale));
+  text-align: center;
+}
+
+.palette-footer {
+  flex: none;
+  justify-content: flex-start;
+  gap: 16px;
+  margin: 0;
+  padding: 8px 16px;
+}
+
+.palette-footer > span {
+  gap: 6px;
+  color: var(--muted);
+  font-size: calc(12px * var(--font-scale));
+}
+
+.command-palette kbd,
+.settings-shortcuts kbd {
+  flex: none;
+  padding: 2px 6px;
+  border: 1.5px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font: 500 calc(12px * var(--font-scale)) var(--mono);
+  white-space: nowrap;
+}

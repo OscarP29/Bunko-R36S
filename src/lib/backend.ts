@@ -29,6 +29,10 @@ export const saveImage = (systemPath: string, fileName: string, imageBytes: numb
 export const openFolder = (systemPath: string) =>
   invoke<void>("open_folder", { systemPath });
 
+export type DiskSpace = { freeBytes: number; totalBytes: number };
+
+export const getDiskSpace = () => invoke<DiskSpace>("disk_space");
+
 export const readNotes = () => invoke<string>("read_notes");
 
 export const writeNotes = (content: string) => invoke<void>("write_notes", { content });

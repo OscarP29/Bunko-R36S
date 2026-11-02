@@ -3,18 +3,21 @@ import {
   ChevronDown,
   ListTodo,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { AiListOrganizer } from "../components/AiListOrganizer.tsx";
 import { NoteCard } from "../components/NoteCard.tsx";
 import { Button } from "../components/ui/Button.tsx";
 import { Field } from "../components/ui/Field.tsx";
 import { Segmented } from "../components/ui/Segmented.tsx";
+import { Skeleton } from "../components/ui/Skeleton.tsx";
 import type { NotesView } from "../hooks/useNotesView.ts";
 import type { FullEntry, Note, System } from "../lib/types.ts";
 
 type NotesPageProps = {
   view: NotesView;
   notes: Note[];
+  loading: boolean;
   pendingNotes: number;
   systems: System[];
   fullLibrary: FullEntry[];
@@ -23,11 +26,13 @@ type NotesPageProps = {
   onImportAiItems: ComponentProps<typeof AiListOrganizer>["onImport"];
   onToggleNote: (id: string) => void;
   onDeleteNote: (id: string) => void;
+  onClearNotes: () => void;
 };
 
 export function NotesPage({
   view,
   notes,
+  loading,
   pendingNotes,
   systems,
   fullLibrary,
@@ -36,6 +41,7 @@ export function NotesPage({
   onImportAiItems,
   onToggleNote,
   onDeleteNote,
+  onClearNotes,
 }: NotesPageProps) {
   const {
     noteDraft,
@@ -180,7 +186,14 @@ export function NotesPage({
         </section>
 
         <div className="notes-list-header">
-          <h2>Tu lista</h2>
+          <div className="notes-list-title">
+            <h2>Tu lista</h2>
+            {notes.length > 0 && (
+              <Button className="danger" onClick={onClearNotes}>
+                <Trash2 size={14} /> Vaciar lista
+              </Button>
+            )}
+          </div>
           {notes.length > 0 && (
             <Segmented
               label="Filtrar por estado"
@@ -270,7 +283,17 @@ export function NotesPage({
         )}
 
         <div className="notes-list">
-          {notes.length === 0 && (
+          {loading && (
+            <div className="notes-group-items" role="status" aria-label="Cargando lista">
+              {[0, 1, 2, 3].map((index) => (
+                <div className="note-card skeleton-stack" key={index}>
+                  <Skeleton />
+                  <Skeleton shape="line short" />
+                </div>
+              ))}
+            </div>
+          )}
+          {!loading && notes.length === 0 && (
             <div className="empty-state notes-empty">
               <div>
                 <ListTodo size={20} />

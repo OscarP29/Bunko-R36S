@@ -5,7 +5,7 @@ use std::{
     fs::{self, File},
     io::{Cursor, Write},
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard},
 };
 use tauri::{AppHandle, Manager, State};
 
@@ -37,9 +37,28 @@ struct System {
 
 /// Raíz de la microSD elegida por el usuario. Todas las operaciones de disco se
 /// validan contra esta raíz, así el frontend no puede leer ni escribir fuera de ella.
+///
+/// Los comandos corren fuera del hilo principal para no congelar la ventana, así
+/// que `disk` los ordena: varias lecturas a la vez y una sola escritura. Sin él,
+/// dos escrituras podrían pisarse `filelist.csv` o su archivo temporal.
 #[derive(Default)]
 struct AppState {
     root: Mutex<Option<PathBuf>>,
+    disk: RwLock<()>,
+}
+
+fn disk_read<'a>(state: &'a State<AppState>) -> Result<RwLockReadGuard<'a, ()>, String> {
+    state
+        .disk
+        .read()
+        .map_err(|_| "Estado interno bloqueado".to_string())
+}
+
+fn disk_write<'a>(state: &'a State<AppState>) -> Result<RwLockWriteGuard<'a, ()>, String> {
+    state
+        .disk
+        .write()
+        .map_err(|_| "Estado interno bloqueado".to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -444,8 +463,9 @@ fn remove_game_impl(dir: &Path, file_name: &str) -> Result<(), String> {
 // Comandos
 // ---------------------------------------------------------------------------
 
-#[tauri::command]
+#[tauri::command(async)]
 fn scan_sd(app: AppHandle, state: State<AppState>, root: String) -> Result<Vec<System>, String> {
+    let _disk = disk_read(&state)?;
     let canonical = canonical_dir(&root)?;
     let systems = scan_root(&canonical)?;
 
@@ -462,36 +482,40 @@ fn scan_sd(app: AppHandle, state: State<AppState>, root: String) -> Result<Vec<S
     Ok(systems)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn list_games(state: State<AppState>, system_path: String) -> Result<Vec<Game>, String> {
+    let _disk = disk_read(&state)?;
     list_games_at(&require_system(&state, &system_path)?)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn add_games(
     state: State<AppState>,
     system_path: String,
     games: Vec<NewGameInput>,
 ) -> Result<Vec<Game>, String> {
+    let _disk = disk_write(&state)?;
     add_games_impl(&require_system(&state, &system_path)?, &games)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn remove_game(
     state: State<AppState>,
     system_path: String,
     file_name: String,
 ) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
     remove_game_impl(&require_system(&state, &system_path)?, &file_name)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn save_image(
     state: State<AppState>,
     system_path: String,
     file_name: String,
     image_bytes: Vec<u8>,
 ) -> Result<String, String> {
+    let _disk = disk_write(&state)?;
     let dir = require_system(&state, &system_path)?;
     let stem = Path::new(&file_name)
         .file_stem()
@@ -522,8 +546,69 @@ fn open_folder(state: State<AppState>, system_path: Option<String>) -> Result<()
         .map_err(|e| format!("No se pudo abrir la carpeta: {e}"))
 }
 
-#[tauri::command]
+/// Espacio de la unidad que contiene la raíz, en bytes.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DiskSpace {
+    free_bytes: u64,
+    total_bytes: u64,
+}
+
+#[cfg(windows)]
+fn disk_space_at(path: &Path) -> Result<DiskSpace, String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
+
+    let wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let (mut free_bytes, mut total_bytes) = (0u64, 0u64);
+    // SAFETY: `wide` termina en nulo y los punteros apuntan a u64 vivos durante la llamada.
+    let ok = unsafe {
+        GetDiskFreeSpaceExW(
+            wide.as_ptr(),
+            &mut free_bytes,
+            &mut total_bytes,
+            std::ptr::null_mut(),
+        )
+    };
+    if ok == 0 {
+        return Err("No se pudo leer el espacio de la tarjeta".into());
+    }
+    Ok(DiskSpace {
+        free_bytes,
+        total_bytes,
+    })
+}
+
+#[cfg(unix)]
+fn disk_space_at(path: &Path) -> Result<DiskSpace, String> {
+    use std::{ffi::CString, os::unix::ffi::OsStrExt};
+
+    let c_path = CString::new(path.as_os_str().as_bytes())
+        .map_err(|_| "Ruta de la tarjeta inválida".to_string())?;
+    // SAFETY: statvfs es una estructura de datos planos válida a ceros.
+    let mut stats: libc::statvfs = unsafe { std::mem::zeroed() };
+    // SAFETY: `c_path` termina en nulo y `stats` vive durante la llamada.
+    if unsafe { libc::statvfs(c_path.as_ptr(), &mut stats) } != 0 {
+        return Err("No se pudo leer el espacio de la tarjeta".into());
+    }
+    Ok(DiskSpace {
+        free_bytes: stats.f_bavail as u64 * stats.f_frsize as u64,
+        total_bytes: stats.f_blocks as u64 * stats.f_frsize as u64,
+    })
+}
+
+#[tauri::command(async)]
+fn disk_space(state: State<AppState>) -> Result<DiskSpace, String> {
+    disk_space_at(&require_root(&state)?)
+}
+
+#[tauri::command(async)]
 fn read_notes(state: State<AppState>) -> Result<String, String> {
+    let _disk = disk_read(&state)?;
     let root = require_root(&state)?;
     let path = root.join(NOTES_FILE);
     if !path.exists() {
@@ -532,15 +617,18 @@ fn read_notes(state: State<AppState>) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| format!("No se pudo leer la libreta: {e}"))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn write_notes(state: State<AppState>, content: String) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
     let root = require_root(&state)?;
     write_atomic(&root.join(NOTES_FILE), content.as_bytes())
         .map_err(|e| format!("No se pudo guardar la libreta: {e}"))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 fn unmount_sd(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+    // Espera a que terminen las escrituras en curso antes de liberar la tarjeta.
+    let _disk = disk_write(&state)?;
     let mut root = state
         .root
         .lock()
@@ -581,8 +669,13 @@ fn cache_file(app: &AppHandle, key: &str) -> Result<PathBuf, String> {
     Ok(dir.join(format!("{safe_key}.json")))
 }
 
-#[tauri::command]
-fn read_cache(app: AppHandle, key: String) -> Result<Option<String>, String> {
+#[tauri::command(async)]
+fn read_cache(
+    app: AppHandle,
+    state: State<AppState>,
+    key: String,
+) -> Result<Option<String>, String> {
+    let _disk = disk_read(&state)?;
     let path = cache_file(&app, &key)?;
     if !path.exists() {
         return Ok(None);
@@ -592,8 +685,14 @@ fn read_cache(app: AppHandle, key: String) -> Result<Option<String>, String> {
         .map_err(|e| format!("No se pudo leer la caché: {e}"))
 }
 
-#[tauri::command]
-fn write_cache(app: AppHandle, key: String, value: String) -> Result<(), String> {
+#[tauri::command(async)]
+fn write_cache(
+    app: AppHandle,
+    state: State<AppState>,
+    key: String,
+    value: String,
+) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
     write_atomic(&cache_file(&app, &key)?, value.as_bytes())
 }
 
@@ -611,6 +710,7 @@ pub fn run() {
             remove_game,
             save_image,
             open_folder,
+            disk_space,
             read_notes,
             write_notes,
             read_cache,
@@ -623,6 +723,19 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn disk_space_lee_la_unidad_de_una_carpeta() {
+        let dir = std::fs::canonicalize(std::env::temp_dir()).unwrap();
+        let space = super::disk_space_at(&dir).unwrap();
+        assert!(space.total_bytes > 0);
+        assert!(space.free_bytes <= space.total_bytes);
+    }
+
+    #[test]
+    fn disk_space_falla_si_la_ruta_no_existe() {
+        assert!(super::disk_space_at(std::path::Path::new("Z:\\no\\existe")).is_err());
+    }
+
     use super::*;
     use std::process;
     use std::sync::atomic::{AtomicUsize, Ordering};

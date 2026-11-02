@@ -23,7 +23,8 @@
   --text: #171717;
   --accent-text: #592cb8;
   --on-accent: #111;
-  --brand: #237437;
+  --brand: #6837d5;
+  --brand-shadow: #111;
   --on-purple: #fffdf7;
   --error: #7f1d1d;
   --warning: #9a4a18;
@@ -51,6 +52,7 @@
   --sidebar: #17102b;
   --text: #f5f1e8;
   --brand: #f5f1e8;
+  --brand-shadow: #6837d5;
   --accent-text: #c9b3ff;
   --error: #ffb3b3;
   --warning: #f4b66c;

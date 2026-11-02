@@ -1,4 +1,8 @@
 node_modules
 dist
 src-tauri/target
-src-tauri/Cargo.lock
+.claude
+
+# Originales del logo; en el repo van las versiones optimizadas
+src-tauri/icons/Bunko-logo-cuadrado.png
+src-tauri/icons/bunko-letras.png
