@@ -1358,7 +1358,7 @@ function App() {
           </div>
         </header>
 
-        {true && (
+        {activeTab === "library" && (
           <div className="content">
             {!root ? (
               <section className="welcome-card">
@@ -1610,7 +1610,7 @@ function App() {
           </div>
         )}
         {activeTab === "notes" && (
-          <div className="content notes-content notes-drawer">
+          <div className="content notes-content">
             <section className="page-heading">
               <div>
                 <div className="eyebrow">

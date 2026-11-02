@@ -1,9 +1,8 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   AlertCircle,
   Check,
   CheckCircle2,
-  ChevronRight,
   Disc3,
   Gamepad2,
   Image as ImageIcon,
@@ -35,8 +34,6 @@ export function AddGameModal(props: AddGameModalProps) {
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const pendingNotes = props.notes.filter((note) => !note.done);
   const completedNotes = props.notes.filter((note) => note.done);
-  const [notesOpen, setNotesOpen] = useState(pendingNotes.length <= 5);
-
   return (
     <div
       className="modal-backdrop"
@@ -44,6 +41,7 @@ export function AddGameModal(props: AddGameModalProps) {
         if (event.target === event.currentTarget) props.onClose();
       }}
     >
+      <div className={`add-game-modal-pair ${props.notes.length ? "has-pending-notes" : ""}`}>
       <section className="modal modal-wide">
         <div className="modal-header">
           <div>
@@ -64,26 +62,26 @@ export function AddGameModal(props: AddGameModalProps) {
           </button>
         </div>
 
-        <div className="modal-body">
-          <label className="field-label">SISTEMA DESTINO</label>
-          <div className="selected-system">
-            <Gamepad2 size={17} />
-            <strong>{props.systemName}</strong>
-            <span>Se guardarán en este emulador</span>
-          </div>
+        <div className="modal-body add-game-body">
+          <div className="add-game-main">
+            <label className="field-label">SISTEMA DESTINO</label>
+            <div className="selected-system">
+              <Gamepad2 size={17} />
+              <strong>{props.systemName}</strong>
+              <span>Se guardarán en este emulador</span>
+            </div>
 
-          <label className="field-label">
-            ARCHIVOS DE JUEGO <span>SELECCIÓN MÚLTIPLE</span>
-          </label>
-          <button className="file-picker" onClick={props.onChooseRoms}>
-            <Plus size={17} />
-            <span>
-              {props.drafts.length
-                ? `Añadir más archivos (${props.drafts.length} seleccionados)`
-                : "Selecciona uno o varios archivos de juego"}
-            </span>
-            <ChevronRight size={15} />
-          </button>
+            <label className="field-label">
+              ARCHIVOS DE JUEGO <span>SELECCIÓN MÚLTIPLE</span>
+            </label>
+            <button className="file-picker" onClick={props.onChooseRoms}>
+              <Plus size={17} />
+              <span>
+                {props.drafts.length
+                  ? `Añadir más archivos (${props.drafts.length} seleccionados)`
+                  : "Selecciona uno o varios archivos de juego"}
+              </span>
+            </button>
 
           {props.drafts.length > 0 && (
             <div className="draft-list">
@@ -190,56 +188,14 @@ export function AddGameModal(props: AddGameModalProps) {
             </div>
           )}
 
-          {props.notes.length > 0 && (
-            <div className="draft-notes">
-              <button
-                type="button"
-                className="draft-notes-header"
-                onClick={() => setNotesOpen((v) => !v)}
-                aria-expanded={notesOpen}
-              >
-                <span className="field-label" style={{ margin: 0 }}>
-                  TUS PENDIENTES
-                </span>
-                <span className="draft-notes-count">
-                  {pendingNotes.length} pendientes · {completedNotes.length}{" "}
-                  tachados
-                </span>
-                <ChevronRight
-                  size={14}
-                  className={notesOpen ? "rotated" : ""}
-                />
-              </button>
-              <p className="draft-notes-hint">
-                Marca los que ya tengas en la selección para ir tachándolos de
-                la lista.
-              </p>
-              {notesOpen && (
-                <div className="draft-notes-list">
-                  {props.notes.map((note) => (
-                    <button
-                      key={note.id}
-                      className={`draft-note ${note.done ? "done" : ""}`}
-                      onClick={() => props.onToggleNote(note.id)}
-                      aria-pressed={note.done}
-                    >
-                      <span className="note-check">
-                        {note.done && <Check size={12} />}
-                      </span>
-                      <span>{note.text}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            {props.drafts.length === 0 && (
+              <div className="inline-info">
+                <AlertCircle size={14} /> Selecciona los archivos de juego para
+                empezar. Puedes añadir varios a la vez.
+              </div>
+            )}
+          </div>
 
-          {props.drafts.length === 0 && (
-            <div className="inline-info">
-              <AlertCircle size={14} /> Selecciona los archivos de juego para
-              empezar. Puedes añadir varios a la vez.
-            </div>
-          )}
         </div>
 
         <div className="modal-footer">
@@ -264,6 +220,41 @@ export function AddGameModal(props: AddGameModalProps) {
           </button>
         </div>
       </section>
+
+      {props.notes.length > 0 && (
+        <aside className="modal pending-notes-modal">
+          <div className="modal-header">
+            <div>
+              <div className="eyebrow">TU COLECCIÓN</div>
+              <h2>Lista de pendientes</h2>
+              <p className="modal-subtitle">
+                Marca los juegos que ya agregaste para tacharlos.
+              </p>
+            </div>
+            <span className="draft-notes-count">
+              {pendingNotes.length} pendientes · {completedNotes.length} tachados
+            </span>
+          </div>
+          <div className="modal-body pending-notes-body">
+            <div className="draft-notes-list">
+              {props.notes.map((note) => (
+                <button
+                  key={note.id}
+                  className={`draft-note ${note.done ? "done" : ""}`}
+                  onClick={() => props.onToggleNote(note.id)}
+                  aria-pressed={note.done}
+                >
+                  <span className="note-check">
+                    {note.done && <Check size={12} />}
+                  </span>
+                  <span>{note.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+      )}
+      </div>
     </div>
   );
 }
