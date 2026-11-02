@@ -9,11 +9,15 @@ use std::{
 };
 use tauri::{AppHandle, Manager, State};
 
+mod saves;
+
 /// Tamaño final de todas las carátulas guardadas en la microSD.
 const COVER_SIZE: u32 = 512;
 const NOTES_FILE: &str = ".r36s-manager-notes.json";
 /// Sagas asignadas a mano, por carpeta de sistema y archivo de juego.
 const SAGAS_FILE: &str = ".r36s-manager-sagas.json";
+/// Favoritos que marca la consola clon (firmware CubeGM), relativo a la raíz.
+const FAVORITES_FILE: &str = "cubegm/favorites.lst";
 const FILELIST: &str = "filelist.csv";
 
 #[derive(Serialize, Clone)]
@@ -579,6 +583,31 @@ fn remove_game_impl(dir: &Path, file_name: &str) -> Result<(), String> {
     write_atomic_with_backup(&dir.join(FILELIST), &csv_bytes)
 }
 
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct Favorite {
+    /// Carpeta del sistema, por ejemplo `GBA`.
+    system: String,
+    file_name: String,
+}
+
+/// Lee `favorites.lst`: una línea por juego con `SISTEMA/archivo|título|…`.
+/// El archivo puede acabar en un byte nulo y no traer saltos de línea Windows.
+fn parse_favorites(bytes: &[u8]) -> Vec<Favorite> {
+    String::from_utf8_lossy(bytes)
+        .lines()
+        .filter_map(|line| {
+            let path = line.trim_matches(|c: char| c == '\0' || c.is_whitespace());
+            let path = path.split('|').next()?;
+            let (system, file_name) = path.split_once(['/', '\\'])?;
+            (!system.is_empty() && !file_name.is_empty()).then(|| Favorite {
+                system: system.to_string(),
+                file_name: file_name.to_string(),
+            })
+        })
+        .collect()
+}
+
 /// Cambia el título que muestra la consola. El archivo de ROM no se toca.
 fn rename_game_impl(dir: &Path, file_name: &str, title: &str) -> Result<(), String> {
     let title = title.trim();
@@ -803,6 +832,95 @@ fn write_notes(state: State<AppState>, content: String) -> Result<(), String> {
 }
 
 #[tauri::command(async)]
+fn read_favorites(state: State<AppState>) -> Result<Vec<Favorite>, String> {
+    let _disk = disk_read(&state)?;
+    let path = require_root(&state)?.join(FAVORITES_FILE);
+    match fs::read(&path) {
+        Ok(bytes) => Ok(parse_favorites(&bytes)),
+        // Otros firmwares no tienen este archivo: simplemente no hay favoritos.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(format!("No se pudieron leer los favoritos: {e}")),
+    }
+}
+
+#[tauri::command(async)]
+fn card_info(state: State<AppState>) -> Result<saves::CardInfo, String> {
+    let _disk = disk_write(&state)?;
+    saves::read_or_create_card(&require_root(&state)?)
+}
+
+#[tauri::command(async)]
+fn update_card(
+    state: State<AppState>,
+    name: String,
+    profile: String,
+) -> Result<saves::CardInfo, String> {
+    let _disk = disk_write(&state)?;
+    saves::update_card(&require_root(&state)?, &name, &profile)
+}
+
+#[tauri::command(async)]
+fn saves_summary(state: State<AppState>) -> Result<saves::SavesSummary, String> {
+    let _disk = disk_read(&state)?;
+    saves::summarize(&require_root(&state)?)
+}
+
+#[tauri::command(async)]
+fn list_saves(state: State<AppState>) -> Result<Vec<saves::SaveEntry>, String> {
+    let _disk = disk_read(&state)?;
+    saves::list_saves(&require_root(&state)?)
+}
+
+#[tauri::command(async)]
+fn backup_saves(
+    state: State<AppState>,
+    work_dir: String,
+    label: String,
+    files: Option<Vec<String>>,
+) -> Result<saves::SavesReport, String> {
+    let _disk = disk_write(&state)?;
+    saves::backup(&require_root(&state)?, &work_dir, &label, files.as_deref())
+}
+
+#[tauri::command(async)]
+fn clean_orphan_saves(
+    state: State<AppState>,
+    work_dir: String,
+    label: String,
+) -> Result<saves::SavesReport, String> {
+    let _disk = disk_write(&state)?;
+    saves::clean_orphans(&require_root(&state)?, &work_dir, &label)
+}
+
+#[tauri::command(async)]
+fn list_backups(state: State<AppState>, work_dir: String) -> Result<Vec<saves::BackupInfo>, String> {
+    let _disk = disk_write(&state)?;
+    saves::list_backups(&require_root(&state)?, &work_dir)
+}
+
+#[tauri::command(async)]
+fn restore_saves(
+    state: State<AppState>,
+    work_dir: String,
+    folder: String,
+    files: Vec<String>,
+    label: String,
+) -> Result<saves::SavesReport, String> {
+    let _disk = disk_write(&state)?;
+    saves::restore(&require_root(&state)?, &work_dir, &folder, &files, &label)
+}
+
+#[tauri::command(async)]
+fn open_backups_folder(state: State<AppState>, work_dir: String) -> Result<(), String> {
+    let folder = {
+        let _disk = disk_write(&state)?;
+        saves::backups_folder(&require_root(&state)?, &work_dir)?
+    };
+    tauri_plugin_opener::open_path(folder.to_string_lossy().to_string(), None::<&str>)
+        .map_err(|e| format!("No se pudo abrir la carpeta: {e}"))
+}
+
+#[tauri::command(async)]
 fn read_sagas(state: State<AppState>) -> Result<String, String> {
     let _disk = disk_read(&state)?;
     let path = require_root(&state)?.join(SAGAS_FILE);
@@ -910,6 +1028,16 @@ pub fn run() {
             disk_space,
             read_notes,
             write_notes,
+            read_favorites,
+            card_info,
+            update_card,
+            saves_summary,
+            list_saves,
+            backup_saves,
+            clean_orphan_saves,
+            list_backups,
+            restore_saves,
+            open_backups_folder,
             read_sagas,
             write_sagas,
             read_cache,
@@ -1234,6 +1362,20 @@ mod tests {
         fs::create_dir_all(&inside).unwrap();
         fs::write(inside.join("filelist.csv"), b"").unwrap();
         assert!(path_within(root.path(), &inside).is_ok());
+    }
+
+    #[test]
+    fn parse_favorites_lee_sistema_y_archivo() {
+        let bytes = b"GBA/Mother 3 (T-ESP).gba|Mother 3 (T-ESP)|MOTHER 3 (T-ESP)\nFC/Mario.zip|Mario\n\0";
+        assert_eq!(
+            parse_favorites(bytes),
+            vec![
+                Favorite { system: "GBA".into(), file_name: "Mother 3 (T-ESP).gba".into() },
+                Favorite { system: "FC".into(), file_name: "Mario.zip".into() },
+            ]
+        );
+        assert!(parse_favorites(b"\0").is_empty());
+        assert!(parse_favorites(b"sin-sistema.zip|x\r\n").is_empty());
     }
 
     #[test]

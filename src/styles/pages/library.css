@@ -146,7 +146,7 @@
   flex: none;
 }
 
-.games-grid.list-mode .game-cover.no-art > span:not(.missing-badge) {
+.games-grid.list-mode .game-cover.no-art > span:not(.missing-badge):not(.favorite-badge) {
   font-size: calc(40px * var(--font-scale));
 }
 
@@ -345,7 +345,7 @@
   opacity: .8;
 }
 
-.game-cover.no-art > span:not(.missing-badge) {
+.game-cover.no-art > span:not(.missing-badge):not(.favorite-badge) {
   position: absolute;
   bottom: 9%;
   font: 800 calc(77px * var(--font-scale)) var(--display);

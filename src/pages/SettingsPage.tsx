@@ -1,4 +1,13 @@
+import { useState } from "react";
+import { AlertCircle, CheckCircle2, FolderOpen, History, LoaderCircle, Save, Trash2 } from "lucide-react";
+import { BackupModal } from "../components/BackupModal.tsx";
+import { RestoreModal } from "../components/RestoreModal.tsx";
+import { Button } from "../components/ui/Button.tsx";
 import { Segmented } from "../components/ui/Segmented.tsx";
+import type { CardState } from "../hooks/useCard.ts";
+import type { SavesState } from "../hooks/useSaves.ts";
+import { CONSOLE_PROFILES, consoleProfile } from "../lib/consoles.ts";
+import { formatBytes, formatSize } from "../lib/format.ts";
 import { PALETTE_SHORTCUT } from "../hooks/useShortcuts.ts";
 import { formatShortcut, type Command } from "../lib/commands.ts";
 import {
@@ -6,6 +15,13 @@ import {
   type Settings,
   type ThemeMode,
 } from "../lib/settings.ts";
+
+const CONSOLE_OPTIONS = CONSOLE_PROFILES.map((profile) => ({
+  value: profile.id,
+  label: profile.label,
+  disabled: !profile.available,
+  badge: profile.available ? undefined : "Próximamente",
+}));
 
 const EXTRACT_OPTIONS = [
   { value: "ask", label: "Preguntar" },
@@ -22,13 +38,31 @@ type SettingsPageProps = {
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
   commands: Command[];
+  saves: SavesState;
+  card: CardState;
+  onChooseWorkDir: () => void;
 };
 
 export function SettingsPage({
   settings,
   updateSettings,
   commands,
+  saves,
+  card,
+  onChooseWorkDir,
 }: SettingsPageProps) {
+  const [modal, setModal] = useState<"backup" | "restore" | null>(null);
+  const profile = consoleProfile(card.card?.profile);
+  const { summary, busy, result } = saves;
+
+  function confirmClean() {
+    if (!summary) return;
+    const ok = confirm(
+      `Se moverán ${formatSize(summary.orphans)} partidas de juegos que no están en la tarjeta a:\n${saves.effectiveWorkDir}\n\nPrimero se copian y después se quitan de la microSD.`,
+    );
+    if (ok) void saves.clean();
+  }
+
   return (
     <div className="content settings-content">
       <section className="page-heading">
@@ -72,6 +106,179 @@ export function SettingsPage({
           />
         </div>
       </section>
+
+      <section className="settings-card" aria-labelledby="settings-console">
+        <h2 id="settings-console">Consola</h2>
+
+        {!card.card ? (
+          <p className="settings-note">
+            Conecta la microSD para ver y nombrar su consola.
+          </p>
+        ) : (
+          <>
+            <div className="settings-row-item">
+              <div>
+                <strong>Nombre</strong>
+                <p>
+                  Se guarda en la propia tarjeta. Así Bunko distingue cada
+                  consola y no mezcla sus copias de partidas.
+                </p>
+              </div>
+              <input
+                key={card.card.id}
+                className="text-field settings-name"
+                aria-label="Nombre de la consola"
+                defaultValue={card.card.name}
+                maxLength={40}
+                onBlur={(event) => {
+                  const name = event.target.value.trim();
+                  if (name && name !== card.card?.name) void card.update({ name });
+                  else event.target.value = card.card?.name ?? "";
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+              />
+            </div>
+
+            <div className="settings-row-item">
+              <div>
+                <strong>Modelo y firmware</strong>
+                <p>
+                  {profile
+                    ? `${profile.detail}. Indica a Bunko dónde están los favoritos y las partidas.`
+                    : "Modelo desconocido: favoritos y partidas desactivados."}
+                </p>
+              </div>
+              <Segmented
+                label="Modelo y firmware"
+                value={card.card.profile}
+                options={CONSOLE_OPTIONS}
+                onChange={(profile) => void card.update({ profile })}
+              />
+            </div>
+          </>
+        )}
+
+        {card.error && (
+          <p className="settings-result is-error" role="status">
+            <AlertCircle size={16} />
+            <span>{card.error}</span>
+          </p>
+        )}
+      </section>
+
+      <section className="settings-card" aria-labelledby="settings-backups">
+        <h2 id="settings-backups">Copias de seguridad</h2>
+
+        <div className="settings-row-item">
+          <div className="settings-path">
+            <strong>Carpeta de trabajo</strong>
+            <p>Cada consola tiene aquí su propia carpeta de copias.</p>
+            <code>{saves.effectiveWorkDir || "Sin elegir"}</code>
+          </div>
+          <div className="settings-actions">
+            {settings.workDir && (
+              <Button onClick={() => updateSettings({ workDir: "" })}>
+                Usar Documentos
+              </Button>
+            )}
+            <Button onClick={onChooseWorkDir}>Cambiar</Button>
+            {saves.ready && (
+              <Button onClick={() => void saves.openFolder()}>
+                <FolderOpen size={14} /> Abrir carpeta
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {!saves.ready ? (
+          <p className="settings-note">
+            {!card.card
+              ? "Conecta la microSD para gestionar las partidas guardadas."
+              : "Este modelo todavía no permite copiar partidas."}
+          </p>
+        ) : (
+          <>
+            <div className="settings-row-item">
+              <div>
+                <strong>Partidas de tus juegos</strong>
+                <p>
+                  {summary
+                    ? `${formatSize(summary.owned)} archivos, ${formatBytes(summary.ownedBytes)}. Guardados del juego y rápidos.`
+                    : "Contando partidas…"}
+                </p>
+              </div>
+              <div className="settings-actions">
+                <Button onClick={() => setModal("restore")} disabled={busy !== null}>
+                  {busy === "restore" ? <LoaderCircle size={15} className="spin" /> : <History size={15} />}
+                  Restaurar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => setModal("backup")}
+                  disabled={!summary?.owned || busy !== null}
+                >
+                  {busy === "backup" ? <LoaderCircle size={15} className="spin" /> : <Save size={15} />}
+                  Copiar partidas
+                </Button>
+              </div>
+            </div>
+
+            <div className="settings-row-item">
+              <div>
+                <strong>Partidas sobrantes</strong>
+                <p>
+                  {summary
+                    ? summary.orphans
+                      ? `${formatSize(summary.orphans)} archivos, ${formatBytes(summary.orphanBytes)}, de juegos que no están en la tarjeta.`
+                      : "No hay partidas de juegos que no estén en la tarjeta."
+                    : "Contando partidas…"}
+                </p>
+              </div>
+              <Button
+                className="danger"
+                onClick={confirmClean}
+                disabled={!summary?.orphans || busy !== null}
+              >
+                {busy === "clean" ? <LoaderCircle size={15} className="spin" /> : <Trash2 size={15} />}
+                Mover al PC y limpiar
+              </Button>
+            </div>
+          </>
+        )}
+
+        {result && (
+          <p className={`settings-result ${result.ok ? "is-ok" : "is-error"}`} role="status">
+            {result.ok ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            <span>{result.text}</span>
+          </p>
+        )}
+      </section>
+
+      {modal === "backup" && card.card && (
+        <BackupModal
+          cardName={card.card.name}
+          loadSaves={saves.listSaves}
+          busy={busy === "backup"}
+          onClose={() => setModal(null)}
+          onBackup={async (files) => {
+            if (await saves.backup(files)) setModal(null);
+          }}
+        />
+      )}
+
+      {modal === "restore" && card.card && (
+        <RestoreModal
+          cardName={card.card.name}
+          loadBackups={saves.listBackups}
+          busy={busy === "restore"}
+          onClose={() => setModal(null)}
+          onRestore={async (folder, files) => {
+            if (await saves.restore(folder, files)) setModal(null);
+          }}
+        />
+      )}
 
       <section className="settings-card" aria-labelledby="settings-roms">
         <h2 id="settings-roms">Añadir juegos</h2>

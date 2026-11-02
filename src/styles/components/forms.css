@@ -163,6 +163,20 @@
   font-size: calc(14px * var(--font-scale));
 }
 
+.segmented button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.segmented button > span.segmented-badge:last-child {
+  border-style: dashed;
+  background: transparent;
+  color: var(--muted);
+  font-size: calc(11px * var(--font-scale));
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .segmented button > span:last-child:not(.mini-dot) {
   min-width: 22px;
   padding: 2px 4px;
@@ -183,4 +197,58 @@
   font: 500 calc(12px * var(--font-scale)) var(--mono);
   text-align: center;
   background: var(--green);
+}
+
+/* Casilla de verificación: 16 × 16, borde de 2 px y verde al marcarla. */
+.check {
+  appearance: none;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.check:checked {
+  background: var(--green);
+}
+
+.check:checked::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid var(--on-accent);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.check:focus-visible {
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.check:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Fila con casilla: toda la fila es pulsable y mide al menos 40 px. */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: calc(14px * var(--font-scale));
+}
+
+.check-row:has(.check:disabled) {
+  cursor: not-allowed;
+  color: var(--muted);
 }

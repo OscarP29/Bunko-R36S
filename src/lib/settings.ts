@@ -10,6 +10,8 @@ export type Settings = {
   fontScale: number;
   /** Extrae sin preguntar los .zip/.7z que no conviene copiar comprimidos. */
   autoExtract: boolean;
+  /** Carpeta del PC para las copias de seguridad. Vacía = Documentos\Bunko. */
+  workDir: string;
 };
 
 export const FONT_SCALES = [
@@ -23,6 +25,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "light",
   fontScale: 1.2,
   autoExtract: false,
+  workDir: "",
 };
 
 const THEMES: readonly ThemeMode[] = ["light", "dark", "system"];
@@ -40,6 +43,7 @@ export function loadSettings(): Settings {
       typeof saved?.autoExtract === "boolean"
         ? saved.autoExtract
         : DEFAULT_SETTINGS.autoExtract,
+    workDir: typeof saved?.workDir === "string" ? saved.workDir : DEFAULT_SETTINGS.workDir,
   };
 }
 

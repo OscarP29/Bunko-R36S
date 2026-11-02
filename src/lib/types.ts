@@ -29,7 +29,7 @@ export type Note = {
   suggestedFileName?: string;
 };
 export type Tab = "library" | "notes" | "settings";
-export type Filter = "all" | "missing";
+export type Filter = "all" | "missing" | "favorites";
 export type SortBy = "name" | "file" | "console";
 export type ViewMode = "grid" | "list";
 export type ImageStatus = "idle" | "searching" | "found" | "missing";

@@ -2,6 +2,9 @@ type SegmentedOption<T> = {
   value: T;
   label: string;
   count?: number;
+  /** Opción visible pero no elegible; `badge` explica por qué. */
+  disabled?: boolean;
+  badge?: string;
 };
 
 type SegmentedProps<T> = {
@@ -27,10 +30,12 @@ export function Segmented<T extends string | number>({
           type="button"
           className={value === option.value ? "filter-active" : ""}
           aria-pressed={value === option.value}
+          disabled={option.disabled}
           onClick={() => onChange(option.value)}
         >
           {option.label}
           {option.count !== undefined && <> <span>{option.count}</span></>}
+          {option.badge && <span className="segmented-badge">{option.badge}</span>}
         </button>
       ))}
     </div>

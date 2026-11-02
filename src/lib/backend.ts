@@ -32,6 +32,77 @@ export const renameGame = (systemPath: string, fileName: string, title: string) 
 export const reorderGames = (systemPath: string, order: string[]) =>
   invoke<void>("reorder_games", { systemPath, order });
 
+/** Juego marcado como favorito en la consola (`cubegm/favorites.lst`). */
+export type Favorite = { system: string; fileName: string };
+
+export const readFavorites = () => invoke<Favorite[]>("read_favorites");
+
+export type SavesSummary = {
+  owned: number;
+  ownedBytes: number;
+  orphans: number;
+  orphanBytes: number;
+};
+
+export type SavesReport = { folder: string; files: number; bytes: number };
+
+/** Ficha de la tarjeta (`.bunko-card.json`): identifica la consola. */
+export type CardInfo = { id: string; name: string; profile: string };
+
+export const cardInfo = () => invoke<CardInfo>("card_info");
+
+export const updateCard = (name: string, profile: string) =>
+  invoke<CardInfo>("update_card", { name, profile });
+
+export const savesSummary = () => invoke<SavesSummary>("saves_summary");
+
+/** Partida de un juego que está en la tarjeta. */
+export type SaveEntry = {
+  relative: string;
+  bytes: number;
+  kind: "save" | "state";
+  system: string;
+  title: string;
+};
+
+export const listSaves = () => invoke<SaveEntry[]>("list_saves");
+
+/** Copia al PC las partidas elegidas (todas si `files` no se indica). */
+export const backupSaves = (workDir: string, label: string, files?: string[]) =>
+  invoke<SavesReport>("backup_saves", { workDir, label, files: files ?? null });
+
+export type BackupFile = {
+  relative: string;
+  bytes: number;
+  system: string;
+  title: string;
+  /** Su juego está en la tarjeta: solo así se puede restaurar. */
+  onCard: boolean;
+  /** Reemplazaría una partida que ya está en la tarjeta. */
+  replaces: boolean;
+};
+
+export type BackupInfo = {
+  folder: string;
+  label: string;
+  kind: "partidas" | "sobrantes" | "antes-de-restaurar";
+  files: BackupFile[];
+};
+
+/** Copias de esta tarjeta, de la más reciente a la más antigua. */
+export const listBackups = (workDir: string) =>
+  invoke<BackupInfo[]>("list_backups", { workDir });
+
+export const restoreSaves = (workDir: string, folder: string, files: string[], label: string) =>
+  invoke<SavesReport>("restore_saves", { workDir, folder, files, label });
+
+export const openBackupsFolder = (workDir: string) =>
+  invoke<void>("open_backups_folder", { workDir });
+
+/** Mueve al PC las partidas de juegos que ya no están y las quita de la tarjeta. */
+export const cleanOrphanSaves = (workDir: string, label: string) =>
+  invoke<SavesReport>("clean_orphan_saves", { workDir, label });
+
 export const readSagas = () => invoke<string>("read_sagas");
 
 export const writeSagas = (content: string) => invoke<void>("write_sagas", { content });

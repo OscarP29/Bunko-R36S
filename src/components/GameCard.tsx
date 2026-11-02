@@ -1,16 +1,25 @@
-import { Check, Gamepad2, Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
+import { Check, Gamepad2, Image as ImageIcon, Pencil, Star, Trash2 } from "lucide-react";
 import type { Game } from "../lib/types.ts";
 import { fileUrl } from "../lib/format.ts";
 
 type GameCardProps = {
   game: Game;
   markedNoCover: boolean;
+  /** Marcado como favorito en la consola. */
+  favorite: boolean;
   onImage: () => void;
   onEdit: () => void;
   onRemove: () => void;
 };
 
-export function GameCard({ game, markedNoCover, onImage, onEdit, onRemove }: GameCardProps) {
+export function GameCard({
+  game,
+  markedNoCover,
+  favorite,
+  onImage,
+  onEdit,
+  onRemove,
+}: GameCardProps) {
   return (
     <article className="game-card">
       <div className={`game-cover ${game.hasImage ? "has-art" : "no-art"}`}>
@@ -29,6 +38,11 @@ export function GameCard({ game, markedNoCover, onImage, onEdit, onRemove }: Gam
             {game.hasImage ? "Cambiar imagen" : "Añadir carátula"}
           </button>
         </div>
+        {favorite && (
+          <span className="favorite-badge" title="Favorito en la consola" aria-label="Favorito en la consola">
+            <Star size={14} />
+          </span>
+        )}
         {!game.hasImage && (
           <span className="missing-badge">
             <ImageIcon size={10} /> {markedNoCover ? "Sin carátula" : "Sin imagen"}
@@ -49,6 +63,7 @@ export function GameCard({ game, markedNoCover, onImage, onEdit, onRemove }: Gam
           ) : (
             <span className="meta-missing">{markedNoCover ? "Sin carátula" : "Pendiente"}</span>
           )}
+
           <button
             className="edit-game"
             title="Editar nombre y saga"

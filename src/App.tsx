@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -13,7 +13,9 @@ import { Topbar } from "./components/Topbar.tsx";
 import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
 import { useNotesView } from "./hooks/useNotesView.ts";
+import { useCard } from "./hooks/useCard.ts";
 import { useSagas } from "./hooks/useSagas.ts";
+import { useSaves } from "./hooks/useSaves.ts";
 import { useSettings } from "./hooks/useSettings.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
 import {
@@ -21,6 +23,7 @@ import {
   getDiskSpace,
   listGames,
   openFolder,
+  readFavorites,
   readNotes,
   removeGame,
   renameGame,
@@ -34,6 +37,7 @@ import {
 import type { Command } from "./lib/commands.ts";
 import { archiveAdvice, cleanTitle, systemFolder } from "./lib/rom.ts";
 import { flattenOrder, sagaOf, type GameGroup } from "./lib/sagas.ts";
+import { consoleProfile } from "./lib/consoles.ts";
 import { stepFontScale } from "./lib/settings.ts";
 import type {
   FullEntry,
@@ -77,11 +81,26 @@ function App() {
   const notesRoot = useRef("");
   /** Cola de escrituras: los comandos son concurrentes y las notas deben guardarse en orden. */
   const notesWrites = useRef<Promise<void>>(Promise.resolve());
-  const libraryView = useLibraryView(games);
+  /** Favoritos de la consola como `sistema/archivo` en minúsculas. */
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const isFavorite = useCallback(
+    (game: Game) =>
+      Boolean(selected) &&
+      favorites.has(`${systemFolder(selected!)}/${game.fileName}`.toLowerCase()),
+    [favorites, selected],
+  );
+  const libraryView = useLibraryView(games, isFavorite);
   const sagas = useSagas(root, scannedRoot);
   const sagaOverrides = sagas.overridesFor(selected ? systemFolder(selected) : "");
   const notesView = useNotesView(notes, addNote);
   const settings = useSettings();
+  const card = useCard(root, scannedRoot);
+  const cubegm = Boolean(consoleProfile(card.card?.profile)?.cubegm);
+  const saves = useSaves({
+    enabled: cubegm,
+    cardId: card.card?.id,
+    workDir: settings.settings.workDir,
+  });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const artwork = useArtworkSearch({
     selected,
@@ -144,6 +163,27 @@ function App() {
       })
       .catch(() => setNotesLoaded(true));
   }, [root, scannedRoot]);
+
+  // La consola los cambia, no Bunko: basta con releerlos en cada escaneo.
+  useEffect(() => {
+    if (!isTauri() || !cubegm || !root || scannedRoot !== root) {
+      setFavorites(new Set());
+      return;
+    }
+    let current = true;
+    readFavorites()
+      .then(
+        (items) =>
+          current &&
+          setFavorites(
+            new Set(items.map((item) => `${item.system}/${item.fileName}`.toLowerCase())),
+          ),
+      )
+      .catch(() => current && setFavorites(new Set()));
+    return () => {
+      current = false;
+    };
+  }, [root, scannedRoot, systems, cubegm]);
 
   // Cada cambio en la tarjeta acaba reescaneando `systems`: es el momento de releerlo.
   useEffect(() => {
@@ -224,6 +264,15 @@ function App() {
     } catch (e) {
       setError(String(e));
     }
+  }
+
+  async function chooseWorkDir() {
+    const picked = await open({
+      directory: true,
+      multiple: false,
+      title: "Carpeta de trabajo para las copias de Bunko",
+    });
+    if (typeof picked === "string") settings.updateSettings({ workDir: picked });
   }
 
   async function chooseRoot() {
@@ -702,6 +751,7 @@ function App() {
             loadingGames={loadingGames}
             batchProgress={artwork.batchProgress}
             markedNoCover={artwork.markedNoCover}
+            isFavorite={isFavorite}
             onChooseRoot={chooseRoot}
             onOpenFolder={openSdFolder}
             onAddGame={openAdd}
@@ -714,7 +764,13 @@ function App() {
           />
         )}
         {activeTab === "settings" && (
-          <SettingsPage {...settings} commands={commands} />
+          <SettingsPage
+            {...settings}
+            commands={commands}
+            saves={saves}
+            card={card}
+            onChooseWorkDir={chooseWorkDir}
+          />
         )}
         {activeTab === "notes" && (
           <NotesPage

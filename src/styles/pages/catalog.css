@@ -117,3 +117,116 @@
 .edit-game:hover {
   color: var(--accent-text);
 }
+
+/* Esquina superior derecha: la de «Sin imagen» es la izquierda. */
+.favorite-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--line);
+  background: var(--green);
+  color: var(--on-accent);
+  box-shadow: 2px 2px 0 var(--line);
+}
+
+.favorite-badge svg {
+  fill: currentColor;
+}
+
+.games-grid.list-mode .favorite-badge {
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+}
+
+.games-grid.list-mode .favorite-badge svg {
+  width: 11px;
+  height: 11px;
+}
+
+.filter-group button svg {
+  flex: 0 0 auto;
+}
+
+.saves-modal {
+  width: min(640px, 100%);
+}
+
+.restore-body {
+  display: grid;
+  gap: 16px;
+}
+
+.restore-body .text-field {
+  margin: 0;
+  font-size: calc(14px * var(--font-scale));
+}
+
+.save-checklist {
+  display: grid;
+  gap: 12px;
+}
+
+.save-checklist-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.save-checklist-tools .search-box {
+  flex: 1 1 220px;
+}
+
+.save-checklist-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: calc(14px * var(--font-scale));
+}
+
+.save-groups,
+.save-group ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.save-group {
+  padding: 4px 12px 8px;
+  border: 2px solid var(--line);
+  background: var(--panel);
+}
+
+.save-group ul {
+  gap: 0;
+  padding-left: 28px;
+}
+
+.save-group-title strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: calc(15px * var(--font-scale));
+}
+
+.save-system,
+.save-size {
+  margin-left: auto;
+  color: var(--muted);
+  font: calc(12px * var(--font-scale)) var(--mono);
+  white-space: nowrap;
+}
+
+.save-note {
+  margin: -8px 0 4px 28px;
+  color: var(--warning);
+  font-size: calc(12px * var(--font-scale));
+}

@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Sparkles,
+  Star,
   X,
 } from "lucide-react";
 import { Button } from "../components/ui/Button.tsx";
@@ -68,6 +69,7 @@ type LibraryPageProps = {
   loadingGames: boolean;
   batchProgress: { done: number; total: number } | null;
   markedNoCover: string[];
+  isFavorite: (game: Game) => boolean;
   onChooseRoot: () => void;
   onOpenFolder: (path: string) => void;
   onAddGame: () => void;
@@ -90,6 +92,7 @@ export function LibraryPage({
   loadingGames,
   batchProgress,
   markedNoCover,
+  isFavorite,
   onChooseRoot,
   onOpenFolder,
   onAddGame,
@@ -110,6 +113,7 @@ export function LibraryPage({
     viewMode,
     setViewMode,
     visibleGames,
+    favoriteCount,
   } = view;
   const noImageTotal = systems.reduce(
     (total, system) => total + system.missingImages,
@@ -296,6 +300,15 @@ export function LibraryPage({
                       Sin carátula{" "}
                       <span>{selected?.missingImages ?? 0}</span>
                     </button>
+                    {favoriteCount > 0 && (
+                      <button
+                        className={filter === "favorites" ? "filter-active" : ""}
+                        onClick={() => setFilter("favorites")}
+                      >
+                        <Star size={12} />
+                        Favoritos <span>{favoriteCount}</span>
+                      </button>
+                    )}
                   </div>
                   <Button
                     className="sort-button"
@@ -362,6 +375,7 @@ export function LibraryPage({
                         game={game}
                         onImage={() => onChangeImage(game)}
                         onEdit={() => onEditGame(game)}
+                        favorite={isFavorite(game)}
                         onRemove={() => onRemoveGame(game)}
                         markedNoCover={markedNoCover.includes(game.fileName)}
                       />
