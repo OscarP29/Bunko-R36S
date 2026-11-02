@@ -299,19 +299,7 @@
   gap: 8px;
 }
 
-.note-card-reason {
-  margin: 0 0 0 48px;
-  font-size: calc(14px * var(--font-scale));
-  line-height: 1.5;
-  color: var(--muted2);
-}
 
-.note-card-notes {
-  margin: 0 0 0 48px;
-  font-size: calc(12px * var(--font-scale));
-  color: var(--muted);
-  line-height: 1.4;
-}
 
 .note-card-file {
   margin: 0 0 0 48px;
@@ -375,8 +363,6 @@
   }
 
   .note-card-chips,
-  .note-card-reason,
-  .note-card-notes,
   .note-card-file {
     margin-left: 0;
   }

@@ -100,7 +100,7 @@ para saber qué tengo y qué me gusta.
   port o remake del mismo título en el mismo sistema
   (ej.: "Golden Sun (Spain)" ya cubre "Golden Sun (USA)").
 - Si una versión en otro sistema aporta algo claramente distinto, puedes
-  recomendarla, pero indícalo en el motivo.
+  recomendarla.
 - Recomienda SOLO juegos reales que existan. Si no estás seguro de que
   exista o de su nombre exacto, NO lo incluyas. Nunca inventes títulos.
 - Usa SOLO sistemas compatibles con R36S: FC (NES), SFC (SNES), GB, GBC, GBA,
@@ -110,8 +110,7 @@ para saber qué tengo y qué me gusta.
 - Cada categoría tiene que tener entre 3 y 8 recomendaciones, de calidad
   antes que cantidad. Máximo 40 recomendaciones en total.
 - Cada juego aparece en UNA sola categoría.
-- Si un juego tiene versión en español (oficial o traducción de fans) y la
-  conoces con seguridad, indícalo en "notas". Si no estás seguro, no lo afirmes.
+- NO escribas descripciones, motivos ni notas: solo los campos del esquema.
 - Prioriza juegos que encajen con mis gustos, pero incluye 2-3 "descubrimientos"
   fuera de mi zona habitual si crees que me pueden gustar.
 
@@ -137,16 +136,13 @@ Esquema EXACTO:
   "categories": [
     {
       "name": "Nombre de categoría",
-      "description": "Breve descripción opcional",
       "items": [
         {
           "title": "Título del juego recomendado",
           "system": "Sistema donde jugarlo",
           "folder": "Carpeta sugerida del emulador (ej. GBA, SFC, PS)",
           "suggestedFileName": "Nombre de archivo estilo No-Intro/Redump, sin extensión",
-          "reason": "Por qué me lo recomiendas, citando juegos que ya tengo",
-          "priority": "alta | media | baja",
-          "notes": "Opcional: idioma, versión recomendada, requisitos (BIOS), etc."
+          "priority": "alta | media | baja"
         }
       ]
     }
@@ -356,29 +352,22 @@ export function AiListOrganizer({
         const systemLabel = item.system || item.folder;
         const base = item.title || (item as { fileName?: string }).fileName;
         if (!base) return;
-        const reason = (item as { reason?: string }).reason?.trim();
         const priorityRaw = (item as { priority?: string }).priority?.trim().toLowerCase();
         const priority =
           priorityRaw === "alta" || priorityRaw === "media" || priorityRaw === "baja"
             ? (priorityRaw as "alta" | "media" | "baja")
             : undefined;
-        const notes = (item as { notes?: string }).notes?.trim();
         const suggestedFileName = (item as { suggestedFileName?: string }).suggestedFileName?.trim();
         const folder = (item as { folder?: string }).folder?.trim();
-        const suffix = [priority ? `prioridad ${priority}` : "", reason]
-          .filter(Boolean)
-          .join(" · ");
         items.push({
           text: systemLabel
-            ? `[${category.name}] ${base}${suffix ? ` — ${suffix}` : ""} (${systemLabel})`
-            : `[${category.name}] ${base}${suffix ? ` — ${suffix}` : ""}`,
+            ? `[${category.name}] ${base} (${systemLabel})`
+            : `[${category.name}] ${base}`,
           title: base,
           category: category.name,
           system: systemLabel || undefined,
           folder: folder || undefined,
           priority,
-          reason: reason || undefined,
-          notes: notes || undefined,
           suggestedFileName: suggestedFileName || undefined,
         });
       });
@@ -389,7 +378,6 @@ export function AiListOrganizer({
         const systemLabel = item.system || item.folder;
         const base = item.title || (item as { fileName?: string }).fileName;
         if (!base) return;
-        const reason = (item as { reason?: string }).reason?.trim();
         const priorityRaw = (item as { priority?: string }).priority
           ?.trim()
           .toLowerCase();
@@ -399,15 +387,13 @@ export function AiListOrganizer({
             : undefined;
         items.push({
           text: systemLabel
-            ? `[Sin categorizar] ${base}${reason ? ` — ${reason}` : ""} (${systemLabel})`
-            : `[Sin categorizar] ${base}${reason ? ` — ${reason}` : ""}`,
+            ? `[Sin categorizar] ${base} (${systemLabel})`
+            : `[Sin categorizar] ${base}`,
           title: base,
           category: "Sin categoría",
           system: systemLabel || undefined,
           folder: (item as { folder?: string }).folder?.trim() || undefined,
           priority,
-          reason: reason || undefined,
-          notes: (item as { notes?: string }).notes?.trim() || undefined,
           suggestedFileName:
             (item as { suggestedFileName?: string }).suggestedFileName?.trim() ||
             undefined,
@@ -660,9 +646,6 @@ export function AiListOrganizer({
                         </IconButton>
                       </div>
                     </summary>
-                    {cat.description && (
-                      <p className="ai-cat-desc">{cat.description}</p>
-                    )}
                     <ul>
                       {items.map(({ item, ii, key }) => {
                         const prio = priorityOf(
@@ -670,8 +653,6 @@ export function AiListOrganizer({
                         );
                         const system = item.system || item.folder;
                         const title = item.title || item.fileName || "";
-                        const reason = (item as { reason?: string }).reason;
-                        const notes = (item as { notes?: string }).notes;
                         const suggested =
                           (item as { suggestedFileName?: string })
                             .suggestedFileName;
@@ -692,15 +673,6 @@ export function AiListOrganizer({
                                 <Chip tone="system">{system}</Chip>
                               )}
                             </div>
-                            {reason && (
-                              <p className="ai-game-reason">{reason}</p>
-                            )}
-                            {notes && (
-                              <p className="ai-game-notes">
-                                <span className="ai-info-icon">i</span>
-                                {notes}
-                              </p>
-                            )}
                             {suggested && (
                               <div className="ai-game-file">
                                 <code>{suggested}</code>

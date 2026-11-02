@@ -1,0 +1,85 @@
+/* Menú contextual (ver ContextMenu.tsx). */
+
+.context-menu {
+  position: fixed;
+  z-index: 30;
+  min-width: 232px;
+  max-width: calc(100vw - 16px);
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  background: var(--panel);
+  border: 3px solid var(--line);
+  box-shadow: 4px 4px 0 var(--line);
+}
+
+.context-menu li.separated {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 2px solid var(--line-soft);
+}
+
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: calc(14px * var(--font-scale));
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-menu button:hover,
+.context-menu button:focus-visible {
+  outline: none;
+  background: var(--purple);
+  color: var(--on-purple);
+}
+
+.context-menu button.danger {
+  color: var(--error);
+}
+
+.context-menu button.danger:hover,
+.context-menu button.danger:focus-visible {
+  background: var(--error);
+  color: var(--panel);
+}
+
+/* Sugerencias bajo un campo de texto: misma caja que el menú contextual. */
+.combobox {
+  position: relative;
+}
+
+.context-menu.combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.combobox-list li {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: calc(14px * var(--font-scale));
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.combobox-list li:hover,
+.combobox-list li.active {
+  background: var(--purple);
+  color: var(--on-purple);
+}

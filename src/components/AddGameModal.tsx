@@ -295,7 +295,7 @@ export function AddGameModal(props: AddGameModalProps) {
                   <span className="note-check">
                     {note.done && <Check size={12} />}
                   </span>
-                  <span>{note.text}</span>
+                  <span>{note.title || note.text}</span>
                 </button>
               ))}
             </div>

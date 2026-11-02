@@ -24,8 +24,8 @@ const match = (name: string, score: number): ArtworkMatch => ({
 });
 
 test("githubRepoName convierte el nombre de consola en nombre de repositorio", () => {
-  assert.equal(githubRepoName("Nintendo - Game Boy Advance"), "Nintendo_Game_Boy_Advance");
-  assert.equal(githubRepoName("FB Neo - Arcade Games"), "FB_Neo_Arcade_Games");
+  assert.equal(githubRepoName("Nintendo - Game Boy Advance"), "Nintendo_-_Game_Boy_Advance");
+  assert.equal(githubRepoName("FB Neo - Arcade Games"), "FB_Neo_-_Arcade_Games");
 });
 
 test("parseGithubTree solo conserva PNG de las categorías de carátulas", () => {

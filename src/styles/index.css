@@ -10,6 +10,7 @@
 @import "./components/feedback.css";
 @import "./components/modal.css";
 @import "./components/command-palette.css";
+@import "./components/context-menu.css";
 @import "./pages/library.css";
 @import "./pages/notes.css";
 @import "./pages/ai-organizer.css";

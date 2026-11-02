@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Undo2 } from "lucide-react";
 import { AddGameModal } from "./components/AddGameModal.tsx";
 import { ArtworkModal } from "./components/ArtworkModal.tsx";
 import { CommandPalette } from "./components/CommandPalette.tsx";
 import { EditGameModal } from "./components/EditGameModal.tsx";
 import { OrganizeModal } from "./components/OrganizeModal.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
+import { Button } from "./components/ui/Button.tsx";
 import { Topbar } from "./components/Topbar.tsx";
 import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
@@ -79,6 +80,10 @@ function App() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [notice, setNotice] = useState("");
+  /** Acción para deshacer lo que anuncia el aviso actual; alarga el aviso a 5 s. */
+  const [noticeUndo, setNoticeUndo] = useState<{ notice: string; run: () => void } | null>(null);
+  // Solo vale para el aviso con el que se creó, no para uno posterior.
+  const undo = noticeUndo?.notice === notice ? noticeUndo : null;
   /** Raíz cuyas notas están cargadas: evita copiar la libreta a otra tarjeta. */
   const notesRoot = useRef("");
   /** Cola de escrituras: los comandos son concurrentes y las notas deben guardarse en orden. */
@@ -222,9 +227,20 @@ function App() {
 
   useEffect(() => {
     if (!notice) return;
-    const timer = setTimeout(() => setNotice(""), 3000);
+    const timer = setTimeout(() => setNotice(""), undo ? 5000 : 3000);
     return () => clearTimeout(timer);
-  }, [notice]);
+  }, [notice, undo]);
+
+  // Sin el menú del navegador (Actualizar, Guardar como…), salvo en campos de texto.
+  useEffect(() => {
+    const blockNativeMenu = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, [contenteditable='true']")) return;
+      event.preventDefault();
+    };
+    document.addEventListener("contextmenu", blockNativeMenu);
+    return () => document.removeEventListener("contextmenu", blockNativeMenu);
+  }, []);
 
   function saveNotes(payload: string) {
     const write = notesWrites.current
@@ -507,6 +523,40 @@ function App() {
     }
   }
 
+  /** Para una ROM mala: la quita del catálogo y la apunta en pendientes para reponerla. */
+  async function replaceGame(game: Game) {
+    if (!selected) return;
+    if (
+      !confirm(
+        `¿Quitar “${game.title}” del catálogo y añadirlo a pendientes para reemplazarlo? El archivo de juego se conservará.`,
+      )
+    )
+      return;
+    try {
+      await removeGame(selected.path, game.fileName);
+      setNotes((items) => [
+        {
+          id: crypto.randomUUID(),
+          text: game.title,
+          title: game.title,
+          done: false,
+          category: "Reemplazar",
+          system: selected.name,
+          folder: systemFolder(selected),
+          priority: "alta",
+          suggestedFileName: game.fileName,
+        },
+        ...items,
+      ]);
+      setNotesLoaded(true);
+      setGames(await listGames(selected.path));
+      setSystems(await scanSd(root));
+      setNotice("Juego quitado y añadido a pendientes");
+    } catch (e) {
+      setError(String(e));
+    }
+  }
+
   function startEdit(game: Game) {
     setTargetGame(game);
     setModal("edit");
@@ -644,15 +694,23 @@ function App() {
   }
 
   function clearNotes() {
-    if (
-      !confirm(
-        `¿Borrar los ${notes.length} juegos de la lista de pendientes? Esta acción no se puede deshacer.`,
-      )
-    )
-      return;
+    const removed = notes;
+    if (!removed.length) return;
     setNotes([]);
     setNotesLoaded(true);
     setNotice("Lista de pendientes vaciada");
+    setNoticeUndo({
+      notice: "Lista de pendientes vaciada",
+      // Conserva lo que se haya añadido mientras tanto.
+      run: () => {
+        setNotes((items) => [
+          ...items,
+          ...removed.filter((note) => !items.some((item) => item.id === note.id)),
+        ]);
+        setNotesLoaded(true);
+        setNotice("Lista de pendientes recuperada");
+      },
+    });
   }
 
   function handleGlobalKeys(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -781,6 +839,7 @@ function App() {
             onEditGame={startEdit}
             onOrganize={() => setModal("organize")}
             onRemoveGame={removeGameFromCatalog}
+            onReplaceGame={replaceGame}
           />
         )}
         {activeTab === "settings" && (
@@ -903,6 +962,16 @@ function App() {
         <div className="toast">
           <CheckCircle2 size={16} />
           {notice}
+          {undo && (
+            <Button
+              onClick={() => {
+                setNoticeUndo(null);
+                undo.run();
+              }}
+            >
+              <Undo2 size={14} /> Deshacer
+            </Button>
+          )}
         </div>
       )}
     </div>

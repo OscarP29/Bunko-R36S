@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { noteFitsSystem, noteSystem } from "./notes.ts";
+import { gameTitleSuggestions, noteFitsSystem, noteSystem } from "./notes.ts";
 
 const note = (patch: Record<string, string>) => ({ id: "1", text: "Juego", done: false, ...patch });
 
@@ -18,4 +18,20 @@ test("noteFitsSystem acepta el mismo emulador por carpeta o nombre, y las notas 
   assert.equal(noteFitsSystem(note({}), "GBA"), true);
   assert.equal(noteFitsSystem(note({ system: "PS" }), "GBA"), false);
   assert.equal(noteFitsSystem(note({ text: "Mario (FC)" }), "GBA"), false);
+});
+
+test("gameTitleSuggestions quita la región, no repite y prioriza los que empiezan por la búsqueda", () => {
+  const names = [
+    "Super Mario World (USA)",
+    "Super Mario World (Europe) (Rev 1)",
+    "Mario Kart - Super Circuit (USA)",
+    "Super Mario Advance (USA, Europe)",
+    "Zelda",
+  ];
+  assert.deepEqual(gameTitleSuggestions(names, "mario"), [
+    "Mario Kart - Super Circuit",
+    "Super Mario Advance",
+    "Super Mario World",
+  ]);
+  assert.deepEqual(gameTitleSuggestions(names, "m"), []);
 });
