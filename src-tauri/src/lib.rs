@@ -618,7 +618,7 @@ pub fn run() {
             unmount_sd
         ])
         .run(tauri::generate_context!())
-        .expect("error while running R36S Manager");
+        .expect("error while running Bunko");
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "R36S Manager",
+  "productName": "Bunko",
   "version": "0.1.0",
   "identifier": "com.r36s.manager",
   "build": {
@@ -11,7 +11,7 @@
   },
   "app": {
     "windows": [
-      { "title": "R36S Manager", "width": 1440, "height": 920, "minWidth": 1080, "minHeight": 720 }
+      { "title": "Bunko", "width": 1440, "height": 920, "minWidth": 1080, "minHeight": 720 }
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' asset: http://asset.localhost https://asset.localhost https://thumbnails.libretro.com data: blob:; connect-src 'self' ipc: http://ipc.localhost https://api.github.com https://thumbnails.libretro.com; object-src 'none'; base-uri 'self'; form-action 'none'",
@@ -19,6 +19,6 @@
       "assetProtocol": { "enable": true, "scope": [] }
     }
   },
-  "bundle": { "active": true, "targets": "all", "icon": ["icons/icon.png", "icons/icon.ico"] },
+  "bundle": { "active": true, "targets": "all", "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.icns", "icons/icon.ico"] },
   "plugins": { "http": { "scopeRedirects": true } }
 }

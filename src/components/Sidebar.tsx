@@ -43,17 +43,7 @@ export function Sidebar({
 }: SidebarProps) {
   return (
       <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">
-            <Gamepad2 size={20} strokeWidth={2.3} />
-          </div>
-          <div>
-            <strong>
-              R36S<span>MANAGER</span>
-            </strong>
-            <small>tu biblioteca, en orden</small>
-          </div>
-        </div>
+        <div className="brand">BUNKO</div>
 
         <div className="side-label">ESPACIO DE TRABAJO</div>
         <button
@@ -163,7 +153,7 @@ export function Sidebar({
           </button>
           <div className="sidebar-footer">
             <span className="version-dot" />
-            R36S Manager <span>v0.1.0</span>
+            Bunko <span>v0.1.0</span>
           </div>
         </div>
       </aside>

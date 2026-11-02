@@ -1,4 +1,4 @@
-# DESIGN.md — Sistema de diseóo de R36S Manager
+# DESIGN.md — Sistema de diseño de Bunko
 
 > **Lectura obligatoria** antes de tocar cualquier parte de la interfaz (UI,
 > estilos, layout, componentes). Si una regla de este documento choca con lo
@@ -9,7 +9,7 @@
 
 ## 1. Identidad visual
 
-R36S Manager usa un estilo **neo-brutalista claro**: fondo papel crema, contornos
+Bunko usa un estilo **neo-brutalista claro**: fondo papel crema, contornos
 negros gruesos, esquinas cuadradas, sombras sólidas desplazadas sin difuminar y
 acentos morados con verde lima para acciones positivas y contadores. Se siente
 como un cartucho físico: contundente, legible, sin adornos suaves.
@@ -74,7 +74,7 @@ Todo tamano de letra se escribe `calc(Npx * var(--font-scale))`, nunca en px sue
 para respetar el tamano elegido en Configuracion (1 / 1.2 / 1.35 / 1.5). Los
 contenedores con texto usan `min-height`, no `height`, para poder crecer.
 
-Familias (Google Fonts): `DM Sans` (cuerpo, 400-700), `Manrope` (`--display`, 400-800), `DM Mono` (`--mono`, 400-500).
+Familias (Google Fonts): `DM Sans` (cuerpo, 400-700), `Syne` (`--display`, titulos, 400-800), `DM Mono` (`--mono`, 400-500).
 
 Escala en uso (px): 8, 9, 10, 11, 12, 13, 14, 15, 20, 40, 43, 77.
 

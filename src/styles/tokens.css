@@ -8,8 +8,9 @@
   font-weight: 400;
   font-size: calc(13px * var(--font-scale));
   --font-scale: 1;
+  --sidebar-width: calc(168px + 80px * var(--font-scale));
   --mono: 'DM Mono',monospace;
-  --display: 'Manrope',sans-serif;
+  --display: 'Syne',sans-serif;
   --bg: #f5f1e8;
   --panel: #fffdf7;
   --panel2: #ece8dc;
@@ -22,6 +23,7 @@
   --text: #171717;
   --accent-text: #592cb8;
   --on-accent: #111;
+  --brand: #237437;
   --on-purple: #fffdf7;
   --error: #7f1d1d;
   --warning: #9a4a18;
@@ -48,6 +50,7 @@
   --modal: #241a42;
   --sidebar: #17102b;
   --text: #f5f1e8;
+  --brand: #f5f1e8;
   --accent-text: #c9b3ff;
   --error: #ffb3b3;
   --warning: #f4b66c;

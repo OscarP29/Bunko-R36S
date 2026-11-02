@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Permisos de escritorio de R36S Manager","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open",{"identifier":"http:default","allow":[{"url":"https://api.github.com/*"},{"url":"https://thumbnails.libretro.com/*"}]}]}}
+{"default":{"identifier":"default","description":"Permisos de escritorio de Bunko","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open",{"identifier":"http:default","allow":[{"url":"https://api.github.com/*"},{"url":"https://thumbnails.libretro.com/*"}]}]}}

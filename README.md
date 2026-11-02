@@ -1,4 +1,4 @@
-# R36S Manager — contexto del proyecto
+# Bunko — contexto del proyecto
 
 ## Objetivo
 

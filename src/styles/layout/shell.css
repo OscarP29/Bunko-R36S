@@ -124,7 +124,7 @@
 }
 
 .main-area {
-  margin-left: 248px;
+  margin-left: var(--sidebar-width);
   min-height: 100vh;
   height: 100vh;
   overflow-y: auto;
