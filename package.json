@@ -6,12 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:ts && npm run test:rust",
+    "test:ts": "node --experimental-strip-types --test \"src/**/*.test.ts\"",
+    "test:rust": "cargo test --offline --manifest-path src-tauri/Cargo.toml",
     "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",
     "@tauri-apps/plugin-dialog": "^2.4.0",
-    "@tauri-apps/plugin-fs": "^2.4.0",
+    "@tauri-apps/plugin-http": "^2.8.3",
     "@tauri-apps/plugin-opener": "^2.4.0",
     "fuse.js": "^7.0.0",
     "lucide-react": "^0.468.0",

@@ -3,7 +3,22 @@
   "productName": "R36S Manager",
   "version": "0.1.0",
   "identifier": "com.r36s.manager",
-  "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
-  "app": { "windows": [{ "title": "R36S Manager", "width": 1440, "height": 920, "minWidth": 1080, "minHeight": 720 }], "security": { "csp": null, "assetProtocol": { "enable": true, "scope": ["**"] } } },
-  "bundle": { "active": true, "targets": "all", "icon": ["icons/icon.png", "icons/icon.ico"] }
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      { "title": "R36S Manager", "width": 1440, "height": 920, "minWidth": 1080, "minHeight": 720 }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' asset: http://asset.localhost https://asset.localhost https://thumbnails.libretro.com data: blob:; connect-src 'self' ipc: http://ipc.localhost https://api.github.com https://thumbnails.libretro.com; object-src 'none'; base-uri 'self'; form-action 'none'",
+      "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' asset: http://asset.localhost https://asset.localhost https://thumbnails.libretro.com data: blob:; connect-src 'self' ipc: http://ipc.localhost https://api.github.com https://thumbnails.libretro.com http://localhost:1420 ws://localhost:1420; object-src 'none'; base-uri 'self'; form-action 'none'",
+      "assetProtocol": { "enable": true, "scope": [] }
+    }
+  },
+  "bundle": { "active": true, "targets": "all", "icon": ["icons/icon.png", "icons/icon.ico"] },
+  "plugins": { "http": { "scopeRedirects": true } }
 }
