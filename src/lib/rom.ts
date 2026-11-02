@@ -88,3 +88,7 @@ export function guessLibretroSystem(folder: string): string {
   };
   return names[key] || folder.replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
 }
+
+/** Nombre de la carpeta del sistema dentro de la tarjeta. */
+export const systemFolder = (system: { path: string }) =>
+  system.path.split(/[\\/]/).pop() || "";

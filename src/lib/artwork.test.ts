@@ -3,12 +3,17 @@ import assert from "node:assert/strict";
 import {
   categoryOfPath,
   dedupeMatches,
+  exactArtworkTargets,
+  findArtworkMatches,
   githubRepoName,
   parseGithubTree,
   parseLibretroListing,
   pickAutomaticMatch,
+  pickBatchMatch,
   pickConfidentMatch,
+  preferSavedChoice,
   rankArtworkMatches,
+  uniqueQueries,
 } from "./artwork.ts";
 import type { ArtworkEntry, ArtworkMatch } from "./types.ts";
 
@@ -100,5 +105,107 @@ test("dedupeMatches conserva el primer resultado de cada ruta", () => {
   assert.deepEqual(
     entries.map((entry) => entry.name),
     ["A", "B"],
+  );
+});
+
+const entry = (category: string, name: string): ArtworkEntry => ({
+  name,
+  path: `${category}/${name}.png`,
+});
+const noRemote = async () => {
+  throw new Error("no debería pedir categorías remotas");
+};
+
+test("uniqueQueries quita vacíos y repetidos conservando el orden", () => {
+  assert.deepEqual(uniqueQueries([null, "Sonic", undefined, "", "Mario", "Sonic"]), [
+    "Sonic",
+    "Mario",
+  ]);
+});
+
+test("findArtworkMatches prefiere las carátulas a títulos y capturas", async () => {
+  const boxart = entry("Named_Boxarts", "Metroid Fusion (USA)");
+  const files = [boxart, entry("Named_Titles", "Metroid Fusion (USA)")];
+  const { matches, searchFiles } = await findArtworkMatches(files, ["Metroid Fusion"], noRemote);
+  assert.equal(matches[0].path, boxart.path);
+  assert.deepEqual(searchFiles, [boxart]);
+});
+
+test("findArtworkMatches cae a títulos del índice si no hay carátula", async () => {
+  const title = entry("Named_Titles", "Metroid Fusion (USA)");
+  const files = [entry("Named_Boxarts", "Zelda"), title];
+  const { matches, searchFiles } = await findArtworkMatches(files, ["Metroid Fusion"], noRemote);
+  assert.equal(matches[0].path, title.path);
+  assert.deepEqual(searchFiles, [title]);
+});
+
+test("findArtworkMatches pide categorías remotas si el índice solo trae carátulas", async () => {
+  const snap = entry("Named_Snaps", "Metroid Fusion (USA)");
+  let calls = 0;
+  const { matches } = await findArtworkMatches(
+    [entry("Named_Boxarts", "Zelda")],
+    ["Metroid Fusion"],
+    async () => {
+      calls++;
+      return [{ category: "Named_Snaps", entries: [snap] }];
+    },
+  );
+  assert.equal(calls, 1);
+  assert.equal(matches[0].path, snap.path);
+});
+
+test("findArtworkMatches sin índice no consulta alternativas", async () => {
+  assert.deepEqual(await findArtworkMatches([], ["Metroid"], noRemote), {
+    matches: [],
+    searchFiles: [],
+  });
+});
+
+test("preferSavedChoice antepone la elección guardada si sigue disponible", () => {
+  const usa = match("Sonic (USA)", 0.1);
+  const europe = match("Sonic (Europe)", 0.2);
+  const files = [entry("Named_Boxarts", "Sonic (USA)"), entry("Named_Boxarts", "Sonic (Europe)")];
+  assert.deepEqual(
+    preferSavedChoice([usa, europe], files, europe).map((item) => [item.name, item.score]),
+    [
+      ["Sonic (Europe)", 0],
+      ["Sonic (USA)", 0.1],
+    ],
+  );
+  assert.deepEqual(preferSavedChoice([usa], files, match("Otro", 0.1)), [usa]);
+  assert.deepEqual(preferSavedChoice([usa], files, null), [usa]);
+});
+
+test("exactArtworkTargets sin índice prueba cada nombre en cada categoría", () => {
+  assert.deepEqual([...exactArtworkTargets([], ["Sonic", ""])], [
+    { category: "Named_Boxarts", name: "Sonic" },
+    { category: "Named_Titles", name: "Sonic" },
+    { category: "Named_Snaps", name: "Sonic" },
+  ]);
+});
+
+test("exactArtworkTargets con índice solo propone entradas que existen", () => {
+  const files = [entry("Named_Titles", "Sonic (USA)"), entry("Named_Boxarts", "Zelda")];
+  assert.deepEqual([...exactArtworkTargets(files, ["Sonic"])], [
+    { category: "Named_Titles", name: "Sonic (USA)" },
+  ]);
+});
+
+test("pickBatchMatch usa carátula, luego títulos, y descarta lo ambiguo", () => {
+  assert.deepEqual(
+    pickBatchMatch([entry("Named_Boxarts", "Metroid Fusion (USA)")], "Metroid Fusion", null),
+    { category: "Named_Boxarts", name: "Metroid Fusion (USA)" },
+  );
+  assert.equal(
+    pickBatchMatch([entry("Named_Boxarts", "Zelda")], "Metroid Fusion", null),
+    null,
+  );
+  assert.equal(
+    pickBatchMatch(
+      [entry("Named_Boxarts", "Metroid Fusion (USA)"), entry("Named_Boxarts", "Metroid Fusion (Europe)")],
+      "Metroid Fusion",
+      null,
+    ),
+    null,
   );
 });

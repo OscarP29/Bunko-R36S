@@ -105,3 +105,115 @@ export function dedupeMatches(matches: ArtworkMatch[]): ArtworkMatch[] {
     return true;
   });
 }
+
+export type ArtworkFallback = { category: ArtworkCategory; entries: ArtworkEntry[] };
+export type ArtworkTarget = { category: ArtworkCategory; name: string };
+
+/** Consultas de búsqueda en orden de prioridad, sin vacíos ni repetidos. */
+export const uniqueQueries = (values: (string | null | undefined)[]) =>
+  Array.from(new Set(values.filter((value): value is string => Boolean(value))));
+
+/**
+ * Busca primero en las carátulas y, si no hay nada, en títulos y capturas. Cuando
+ * el índice solo trae carátulas, las otras categorías se piden con `loadRemoteFallbacks`.
+ */
+export async function findArtworkMatches(
+  files: ArtworkEntry[],
+  queries: string[],
+  loadRemoteFallbacks: () => Promise<ArtworkFallback[]>,
+): Promise<{ matches: ArtworkMatch[]; searchFiles: ArtworkEntry[] }> {
+  let searchFiles = files.filter((item) => item.path.includes("Named_Boxarts"));
+  let matchGroups = searchFiles.length
+    ? queries.map((query) => rankArtworkMatches(searchFiles, query))
+    : [];
+
+  if (files.length && !matchGroups.some((group) => group.length)) {
+    const fallbacks: readonly ArtworkFallback[] = files.some((item) =>
+      item.path.includes("Named_Titles"),
+    )
+      ? (["Named_Titles", "Named_Snaps"] as const).map((category) => ({
+          category,
+          entries: files.filter((item) => item.path.includes(category)),
+        }))
+      : await loadRemoteFallbacks();
+    for (const fallback of fallbacks) {
+      const fallbackMatches = queries.map((query) =>
+        rankArtworkMatches(fallback.entries, query),
+      );
+      if (fallbackMatches.some((group) => group.length)) {
+        matchGroups = fallbackMatches;
+        searchFiles = fallback.entries;
+        break;
+      }
+    }
+  }
+
+  return {
+    matches: matchGroups.find((group) => group.length)?.slice() || [],
+    searchFiles,
+  };
+}
+
+/** Coloca primero la carátula elegida antes por el usuario, si sigue disponible. */
+export function preferSavedChoice(
+  matches: ArtworkMatch[],
+  searchFiles: ArtworkEntry[],
+  savedChoice: ArtworkMatch | null,
+): ArtworkMatch[] {
+  if (!savedChoice) return matches;
+  const known = searchFiles.find((item) => item.path === savedChoice.path);
+  if (!known) return matches;
+  return [
+    { ...known, score: 0 },
+    ...matches.filter((item) => item.path !== known.path),
+  ];
+}
+
+/**
+ * Último intento cuando no hubo coincidencias: con índice, la mejor entrada de cada
+ * categoría; sin índice, el propio nombre, por si ya es el de Libretro.
+ */
+export function* exactArtworkTargets(
+  files: ArtworkEntry[],
+  candidates: string[],
+): Generator<ArtworkTarget> {
+  for (const candidate of candidates.filter(Boolean)) {
+    for (const category of ARTWORK_CATEGORIES) {
+      if (!files.length) {
+        yield { category, name: candidate };
+        continue;
+      }
+      const best = rankArtworkMatches(
+        files
+          .filter((item) => item.path.includes(category))
+          .map(({ name }) => ({ path: `${category}/${name}.png`, name })),
+        candidate,
+      )[0];
+      if (best) yield { category, name: best.name };
+    }
+  }
+}
+
+/** Elección para la búsqueda masiva: sin alguien que decida, solo vale un resultado claro. */
+export function pickBatchMatch(
+  files: ArtworkEntry[],
+  query: string,
+  alias: string | null | undefined,
+): ArtworkTarget | null {
+  const match = pickConfidentMatch(
+    dedupeMatches([
+      ...(alias ? rankArtworkMatches(files, alias) : []),
+      ...rankArtworkMatches(files, query),
+    ]),
+  );
+  if (match) return { category: categoryOfPath(match.path), name: match.name };
+
+  for (const category of ["Named_Titles", "Named_Snaps"] as const) {
+    const entries = files.filter((item) => item.path.includes(category));
+    const confident = pickConfidentMatch(
+      entries.length ? rankArtworkMatches(entries, query) : [],
+    );
+    if (confident) return { category, name: confident.name };
+  }
+  return null;
+}

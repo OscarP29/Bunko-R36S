@@ -102,7 +102,7 @@ npm test            # ambas suites
 
 - `src/App.tsx`: estado de la interfaz, selección de microSD, biblioteca, búsqueda de carátulas y libreta.
 - `src/pages/`: `LibraryPage` y `NotesPage`.
-- `src/hooks/`: `useLibraryView` y `useNotesView` (estado de vista que se conserva al cambiar de pestaña).
+- `src/hooks/`: `useLibraryView` y `useNotesView` (estado de vista que se conserva al cambiar de pestaña) y `useArtworkSearch` (búsqueda de carátulas).
 - `src/components/`: `Sidebar`, `Topbar`, `GameCard`, `NoteCard`, `AddGameModal`, `ArtworkModal` y `AiListOrganizer`.
 - `src/components/ui/`: `Button`, `IconButton`, `Field`, `Chip`, `ModalBackdrop` y `ModalHeader`.
 - `src/lib/rom.ts`: normalización de nombres, regiones y mapeo de carpetas a consolas Libretro.

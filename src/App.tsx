@@ -2,29 +2,14 @@ import { useEffect, useRef, useState } from "react";
 
 import { isTauri } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import {
-  CheckCircle2,
-} from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { AddGameModal } from "./components/AddGameModal.tsx";
 import { ArtworkModal } from "./components/ArtworkModal.tsx";
 import { Sidebar } from "./components/Sidebar.tsx";
 import { Topbar } from "./components/Topbar.tsx";
+import { useArtworkSearch } from "./hooks/useArtworkSearch.ts";
 import { useLibraryView } from "./hooks/useLibraryView.ts";
 import { useNotesView } from "./hooks/useNotesView.ts";
-import { findAlias } from "./lib/aliases.ts";
-import {
-  ARTWORK_CATEGORIES,
-  ARTWORK_TTL,
-  categoryOfPath,
-  dedupeMatches,
-  githubRepoName,
-  parseGithubTree,
-  parseLibretroListing,
-  pickAutomaticMatch,
-  pickConfidentMatch,
-  rankArtworkMatches,
-  type ArtworkCategory,
-} from "./lib/artwork.ts";
 import {
   addGames,
   listGames,
@@ -36,27 +21,10 @@ import {
   unmountSd,
   writeNotes,
 } from "./lib/backend.ts";
-import { webFetch } from "./lib/http.ts";
-import {
-  cleanRomName,
-  cleanTitle,
-  guessLibretroSystem,
-  makeArtworkUrl,
-  stem,
-} from "./lib/rom.ts";
-import {
-  readCachedJson,
-  readLocalJson,
-  writeCachedJson,
-  writeLocalJson,
-} from "./lib/store.ts";
+import { cleanTitle, systemFolder } from "./lib/rom.ts";
 import type {
-  ArtworkEntry,
-  ArtworkIndex,
-  ArtworkMatch,
   FullEntry,
   Game,
-  ImageStatus,
   NewGameDraft,
   Note,
   System,
@@ -67,13 +35,6 @@ import { NotesPage } from "./pages/NotesPage.tsx";
 
 const ROOT_KEY = "r36s-manager-root";
 const NOTES_KEY = "r36s-manager-notes";
-const ARTWORK_CACHE_PREFIX = "r36s-artwork-index:";
-const ARTWORK_CHOICE_PREFIX = "r36s-artwork-choice:";
-
-const systemFolder = (system: System) => system.path.split(/[\\/]/).pop() || "";
-const choiceKey = (libretroSystem: string, fileName: string) =>
-  `${ARTWORK_CHOICE_PREFIX}${libretroSystem}:${cleanRomName(fileName)}`;
-
 function App() {
   const [root, setRoot] = useState(() => localStorage.getItem(ROOT_KEY) || "");
   const [systems, setSystems] = useState<System[]>([]);
@@ -87,26 +48,23 @@ function App() {
   const [drafts, setDrafts] = useState<NewGameDraft[]>([]);
   const [fullLibrary, setFullLibrary] = useState<FullEntry[]>([]);
   const [loadingFullLibrary, setLoadingFullLibrary] = useState(false);
-  const [imageBytes, setImageBytes] = useState<number[] | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
-  const [imageStatus, setImageStatus] = useState<ImageStatus>("idle");
-  const [artworkMatches, setArtworkMatches] = useState<ArtworkMatch[]>([]);
-  const [artworkProgress, setArtworkProgress] = useState("");
-  const [artworkWarning, setArtworkWarning] = useState("");
-  const [markedNoCover, setMarkedNoCover] = useState<string[]>([]);
-  const [batchProgress, setBatchProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const [ejecting, setEjecting] = useState(false);
   const [notes, setNotes] = useState<Note[]>([]);
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   /** Raíz cuyas notas están cargadas: evita copiar la libreta a otra tarjeta. */
   const notesRoot = useRef("");
-  const batchCancel = useRef(false);
   const libraryView = useLibraryView(games);
   const notesView = useNotesView(notes, addNote);
+  const artwork = useArtworkSearch({
+    selected,
+    games,
+    onError: setError,
+    onBatchFinished: async (system) => {
+      await selectSystem(system);
+      setSystems(await scanSd(root));
+    },
+  });
   const skipNotesReload = useRef(false);
 
   useEffect(() => {
@@ -220,7 +178,7 @@ function App() {
     }
     setEjecting(true);
     setError("");
-    batchCancel.current = true;
+    artwork.cancelBatch();
     try {
       if (notesLoaded && notesRoot.current === root) {
         try {
@@ -251,7 +209,7 @@ function App() {
       setGames([]);
       setDrafts([]);
       libraryView.resetFilters();
-      setBatchProgress(null);
+      artwork.clearBatchProgress();
       setNotice("Tarjeta liberada. Ya puedes extraerla con seguridad.");
     } catch (e) {
       setError(`No se pudo liberar la tarjeta: ${String(e)}`);
@@ -270,274 +228,10 @@ function App() {
     }
   }
 
-  async function selectImage(file: File, options?: { preview?: string }) {
-    const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
-    setImageBytes(bytes);
-    setImagePreview(options?.preview ?? URL.createObjectURL(file));
-    setImageStatus("idle");
-  }
-
-  async function loadArtworkIndex(
-    libretroSystem: string,
-  ): Promise<ArtworkEntry[]> {
-    const cacheKey = ARTWORK_CACHE_PREFIX + libretroSystem;
-    const cached = await readCachedJson<ArtworkIndex>(cacheKey);
-    if (
-      cached &&
-      Date.now() - cached.savedAt < ARTWORK_TTL &&
-      Array.isArray(cached.files)
-    ) {
-      return cached.files;
-    }
-
-    const repo = githubRepoName(libretroSystem);
-    const response = await webFetch(
-      `https://api.github.com/repos/libretro-thumbnails/${encodeURIComponent(repo)}/git/trees/master?recursive=1`,
-      { headers: { Accept: "application/vnd.github+json" } },
-    );
-    if (!response.ok) {
-      throw new Error(
-        `GitHub respondió ${response.status} al cargar el índice de ${libretroSystem}.`,
-      );
-    }
-    const tree = (await response.json()) as {
-      truncated?: boolean;
-      tree?: { path: string; type: string }[];
-    };
-
-    if (tree.truncated) {
-      setArtworkWarning(
-        `GitHub devolvió un índice truncado para ${libretroSystem}. Probé el listado público del servidor de thumbnails como alternativa.`,
-      );
-      const fallback = await webFetch(
-        `https://thumbnails.libretro.com/${encodeURIComponent(libretroSystem)}/Named_Boxarts/`,
-      );
-      if (!fallback.ok) {
-        throw new Error(
-          "El índice de GitHub llegó truncado y el servidor de thumbnails no ofreció un listado alternativo. Puedes probar una búsqueda exacta.",
-        );
-      }
-      const files = parseLibretroListing(
-        await fallback.text(),
-        "Named_Boxarts",
-      );
-      if (!files.length)
-        throw new Error(
-          "La alternativa pública no devolvió nombres de carátulas.",
-        );
-      await writeCachedJson(cacheKey, {
-        savedAt: Date.now(),
-        files,
-      } satisfies ArtworkIndex);
-      return files;
-    }
-
-    const files = parseGithubTree(tree.tree ?? []);
-    if (!files.length) {
-      throw new Error(
-        `No encontré Named_Boxarts en el repositorio ${repo}. Revisa el nombre del sistema.`,
-      );
-    }
-    await writeCachedJson(cacheKey, {
-      savedAt: Date.now(),
-      files,
-    } satisfies ArtworkIndex);
-    return files;
-  }
-
-  async function loadCategoryFallbacks(
-    libretroSystem: string,
-  ): Promise<{ category: ArtworkCategory; entries: ArtworkEntry[] }[]> {
-    const result: { category: ArtworkCategory; entries: ArtworkEntry[] }[] = [];
-    for (const category of ["Named_Titles", "Named_Snaps"] as const) {
-      try {
-        const response = await webFetch(
-          `https://thumbnails.libretro.com/${encodeURIComponent(libretroSystem)}/${category}/`,
-        );
-        if (!response.ok) continue;
-        const entries = parseLibretroListing(await response.text(), category);
-        if (entries.length) result.push({ category, entries });
-      } catch {
-        // fallback no disponible para este sistema
-      }
-    }
-    return result;
-  }
-
-  async function previewArtworkMatch(
-    match: ArtworkMatch,
-    fileName: string,
-    forNewGame: boolean,
-  ) {
-    if (!selected) return;
-    const libretroSystem = guessLibretroSystem(systemFolder(selected));
-    const category = categoryOfPath(match.path);
-    setImageStatus("searching");
-    setArtworkProgress(`Cargando ${match.name}…`);
-    const response = await webFetch(
-      makeArtworkUrl(libretroSystem, category, match.name),
-    );
-    if (!response.ok)
-      throw new Error(
-        `No se pudo descargar ${match.name} (${response.status}).`,
-      );
-    const blob = await response.blob();
-    const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
-    if (!forNewGame) await saveImage(selected.path, fileName, bytes);
-    setImageBytes(bytes);
-    setImagePreview(URL.createObjectURL(blob));
-    setImageStatus("found");
-    writeLocalJson(choiceKey(libretroSystem, fileName), match);
-    setArtworkProgress("");
-  }
-
-  async function searchArtwork(
-    gameTitle: string,
-    fileName: string,
-    forNewGame: boolean,
-  ) {
-    setImageStatus("searching");
-    setImageBytes(null);
-    setImagePreview("");
-    setArtworkMatches([]);
-    setArtworkWarning("");
-    setArtworkProgress("Preparando índice…");
-    try {
-      const libretroSystem = selected
-        ? guessLibretroSystem(systemFolder(selected))
-        : "";
-      let files: ArtworkEntry[] = [];
-      try {
-        files = await loadArtworkIndex(libretroSystem);
-      } catch (indexError) {
-        setArtworkWarning(
-          `${String(indexError)} Probaré las categorías públicas de carátulas, títulos y capturas.`,
-        );
-      }
-
-      const original = stem(fileName);
-      const queries = Array.from(
-        new Set(
-          [findAlias(original), gameTitle, original].filter(
-            (value): value is string => Boolean(value),
-          ),
-        ),
-      );
-
-      let searchFiles = files.filter((item) =>
-        item.path.includes("Named_Boxarts"),
-      );
-      let matchGroups = searchFiles.length
-        ? queries.map((query) => rankArtworkMatches(searchFiles, query))
-        : [];
-
-      if (files.length && !matchGroups.some((group) => group.length)) {
-        const fallbacks = files.some((item) =>
-          item.path.includes("Named_Titles"),
-        )
-          ? (["Named_Titles", "Named_Snaps"] as const).map((category) => ({
-              category,
-              entries: files.filter((item) => item.path.includes(category)),
-            }))
-          : await loadCategoryFallbacks(libretroSystem);
-        for (const fallback of fallbacks) {
-          const fallbackMatches = queries.map((query) =>
-            rankArtworkMatches(fallback.entries, query),
-          );
-          if (fallbackMatches.some((group) => group.length)) {
-            matchGroups = fallbackMatches;
-            searchFiles = fallback.entries;
-            break;
-          }
-        }
-      }
-
-      let matches: ArtworkMatch[] =
-        matchGroups.find((group) => group.length)?.slice() || [];
-
-      const savedChoice = readLocalJson<ArtworkMatch>(
-        choiceKey(libretroSystem, fileName),
-      );
-      if (savedChoice) {
-        const known = searchFiles.find(
-          (item) => item.path === savedChoice.path,
-        );
-        if (known) {
-          matches = [
-            { ...known, score: 0 },
-            ...matches.filter((item) => item.path !== known.path),
-          ];
-        }
-      }
-
-      if (!matches.length) {
-        // Último intento: ruta exacta, por si el nombre del archivo ya es el de Libretro.
-        const exact = [original, gameTitle].filter(Boolean);
-        for (const candidate of exact) {
-          for (const category of ARTWORK_CATEGORIES) {
-            const fileNames = files.length
-              ? files
-                  .filter((item) => item.path.includes(category))
-                  .map((item) => item.name)
-              : [candidate];
-            const fallbackMatch = files.length
-              ? rankArtworkMatches(
-                  fileNames.map((name) => ({
-                    path: `${category}/${name}.png`,
-                    name,
-                  })),
-                  candidate,
-                )[0]
-              : null;
-            if (files.length && !fallbackMatch) continue;
-            const response = await webFetch(
-              makeArtworkUrl(
-                libretroSystem,
-                category,
-                fallbackMatch?.name || candidate,
-              ),
-            );
-            if (!response.ok) continue;
-            const blob = await response.blob();
-            const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
-            if (!forNewGame && selected)
-              await saveImage(selected.path, fileName, bytes);
-            setImageBytes(bytes);
-            setImagePreview(URL.createObjectURL(blob));
-            setImageStatus("found");
-            setArtworkProgress("");
-            return;
-          }
-        }
-        setImageStatus("missing");
-        setArtworkProgress("");
-        return;
-      }
-
-      setArtworkMatches(matches);
-      const automatic = pickAutomaticMatch(matches);
-      if (automatic) {
-        await previewArtworkMatch(automatic, fileName, forNewGame);
-      } else {
-        setImageStatus("idle");
-        setArtworkProgress("");
-      }
-    } catch (e) {
-      setImageStatus("missing");
-      setArtworkProgress("");
-      setError(String(e));
-    }
-  }
-
   function openAdd() {
     setTargetGame(null);
     setDrafts([]);
-    setImageBytes(null);
-    setImagePreview("");
-    setImageStatus("idle");
-    setArtworkMatches([]);
-    setArtworkProgress("");
-    setArtworkWarning("");
+    artwork.resetArtwork();
     setModal("add");
   }
 
@@ -602,136 +296,10 @@ function App() {
     });
   }
 
-  async function searchDraftCover(id: string) {
-    if (!selected) return;
+  function searchDraftCover(id: string) {
     const draft = drafts.find((item) => item.id === id);
-    if (!draft) return;
-    updateDraft(id, { searching: true, error: "", imageStatus: "searching" });
-    try {
-      const libretroSystem = guessLibretroSystem(systemFolder(selected));
-      let files: ArtworkEntry[] = [];
-      try {
-        files = await loadArtworkIndex(libretroSystem);
-      } catch (indexError) {
-        setArtworkWarning(String(indexError));
-      }
-
-      const original = stem(draft.fileName);
-      const queries = Array.from(
-        new Set(
-          [
-            findAlias(original),
-            draft.title || cleanTitle(draft.fileName),
-            original,
-          ].filter((value): value is string => Boolean(value)),
-        ),
-      );
-
-      let searchFiles = files.filter((item) =>
-        item.path.includes("Named_Boxarts"),
-      );
-      let matchGroups = searchFiles.length
-        ? queries.map((query) => rankArtworkMatches(searchFiles, query))
-        : [];
-
-      if (files.length && !matchGroups.some((group) => group.length)) {
-        const fallbacks = files.some((item) =>
-          item.path.includes("Named_Titles"),
-        )
-          ? (["Named_Titles", "Named_Snaps"] as const).map((category) => ({
-              category,
-              entries: files.filter((item) => item.path.includes(category)),
-            }))
-          : await loadCategoryFallbacks(libretroSystem);
-        for (const fallback of fallbacks) {
-          const fallbackMatches = queries.map((query) =>
-            rankArtworkMatches(fallback.entries, query),
-          );
-          if (fallbackMatches.some((group) => group.length)) {
-            matchGroups = fallbackMatches;
-            searchFiles = fallback.entries;
-            break;
-          }
-        }
-      }
-
-      let matches: ArtworkMatch[] =
-        matchGroups.find((group) => group.length)?.slice() || [];
-
-      const savedChoice = readLocalJson<ArtworkMatch>(
-        choiceKey(libretroSystem, draft.fileName),
-      );
-      if (savedChoice) {
-        const known = searchFiles.find(
-          (item) => item.path === savedChoice.path,
-        );
-        if (known) {
-          matches = [
-            { ...known, score: 0 },
-            ...matches.filter((item) => item.path !== known.path),
-          ];
-        }
-      }
-
-      if (!matches.length) {
-        let found = false;
-        for (const candidate of [original, draft.title].filter(Boolean)) {
-          for (const category of ARTWORK_CATEGORIES) {
-            const response = await webFetch(
-              makeArtworkUrl(libretroSystem, category, candidate),
-            );
-            if (!response.ok) continue;
-            const blob = await response.blob();
-            const bytes = Array.from(
-              new Uint8Array(await blob.arrayBuffer()),
-            );
-            updateDraft(id, {
-              imageBytes: bytes,
-              imagePreview: URL.createObjectURL(blob),
-              imageStatus: "found",
-              searching: false,
-              error: "",
-            });
-            found = true;
-            break;
-          }
-          if (found) break;
-        }
-        if (!found) {
-          updateDraft(id, {
-            searching: false,
-            imageStatus: "missing",
-            error: "Sin coincidencias en Libretro.",
-          });
-        }
-        return;
-      }
-
-      const automatic = pickAutomaticMatch(matches) ?? matches[0];
-      const category = categoryOfPath(automatic.path);
-      const response = await webFetch(
-        makeArtworkUrl(libretroSystem, category, automatic.name),
-      );
-      if (!response.ok)
-        throw new Error(
-          `No se pudo descargar ${automatic.name} (${response.status}).`,
-        );
-      const blob = await response.blob();
-      const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
-      updateDraft(id, {
-        imageBytes: bytes,
-        imagePreview: URL.createObjectURL(blob),
-        imageStatus: "found",
-        searching: false,
-        error: "",
-      });
-    } catch (e) {
-      updateDraft(id, {
-        searching: false,
-        imageStatus: "missing",
-        error: String(e),
-      });
-    }
+    if (draft)
+      void artwork.searchDraftCover(draft, (patch) => updateDraft(id, patch));
   }
 
   async function saveNewGames() {
@@ -760,12 +328,12 @@ function App() {
   }
 
   async function saveGameImage() {
-    if (!selected || !targetGame || !imageBytes) return;
+    if (!selected || !targetGame || !artwork.imageBytes) return;
     setLoading(true);
     try {
       // Si la carátula vino de la búsqueda ya se guardó al previsualizarla.
-      if (imageStatus !== "found") {
-        await saveImage(selected.path, targetGame.fileName, imageBytes);
+      if (artwork.imageStatus !== "found") {
+        await saveImage(selected.path, targetGame.fileName, artwork.imageBytes);
       }
       setModal(null);
       setNotice("Carátula guardada en 512 × 512 px");
@@ -776,28 +344,6 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function chooseArtwork(match: ArtworkMatch) {
-    if (!targetGame) return;
-    try {
-      await previewArtworkMatch(match, targetGame.fileName, false);
-    } catch (e) {
-      setError(String(e));
-      setImageStatus("missing");
-    }
-  }
-
-  function markCurrentGameNoCover() {
-    if (targetGame) {
-      setMarkedNoCover((items) =>
-        Array.from(new Set([...items, targetGame.fileName])),
-      );
-    }
-    setArtworkMatches([]);
-    setImageBytes(null);
-    setImagePreview("");
-    setImageStatus("missing");
   }
 
   async function removeGameFromCatalog(game: Game) {
@@ -820,110 +366,9 @@ function App() {
 
   function startImage(game: Game) {
     setTargetGame(game);
-    setImageBytes(null);
-    setImagePreview("");
-    setImageStatus("idle");
-    setArtworkMatches([]);
-    setArtworkProgress("");
-    setArtworkWarning("");
-    setMarkedNoCover((items) => items.filter((item) => item !== game.fileName));
+    artwork.resetArtwork();
+    artwork.clearNoCover(game.fileName);
     setModal("image");
-  }
-
-  async function searchMissingCovers() {
-    if (!selected) return;
-    batchCancel.current = false;
-    const missing = games.filter(
-      (game) => !game.hasImage && !markedNoCover.includes(game.fileName),
-    );
-    setBatchProgress({ done: 0, total: missing.length });
-    const libretroSystem = guessLibretroSystem(systemFolder(selected));
-
-    // El índice se carga una vez para todos los juegos: antes cada worker lo pedía.
-    let files: ArtworkEntry[] = [];
-    try {
-      files = await loadArtworkIndex(libretroSystem);
-    } catch {
-      // sin índice se intenta la ruta exacta juego por juego
-    }
-
-    let next = 0;
-    const workers = Array.from({ length: 6 }, async () => {
-      while (next < missing.length) {
-        if (batchCancel.current) return;
-        const game = missing[next++];
-        try {
-          if (!files.length) {
-            const exact = stem(game.fileName);
-            for (const category of ARTWORK_CATEGORIES) {
-              const response = await webFetch(
-                makeArtworkUrl(libretroSystem, category, exact),
-              );
-              if (!response.ok) continue;
-              const bytes = Array.from(
-                new Uint8Array(await (await response.blob()).arrayBuffer()),
-              );
-              await saveImage(selected.path, game.fileName, bytes);
-              break;
-            }
-          } else {
-            const alias = findAlias(game.fileName);
-            const candidates = dedupeMatches([
-              ...(alias ? rankArtworkMatches(files, alias) : []),
-              ...rankArtworkMatches(files, game.fileName),
-            ]);
-            let match = pickConfidentMatch(candidates);
-            let category: ArtworkCategory = match
-              ? categoryOfPath(match.path)
-              : "Named_Boxarts";
-            if (!match) {
-              for (const fallbackCategory of [
-                "Named_Titles",
-                "Named_Snaps",
-              ] as const) {
-                const fallbackList = files.filter((item) =>
-                  item.path.includes(fallbackCategory),
-                );
-                const confident = pickConfidentMatch(
-                  fallbackList.length
-                    ? rankArtworkMatches(fallbackList, game.fileName)
-                    : [],
-                );
-                if (confident) {
-                  match = confident;
-                  category = fallbackCategory;
-                  break;
-                }
-              }
-            }
-            if (match) {
-              const response = await webFetch(
-                makeArtworkUrl(libretroSystem, category, match.name),
-              );
-              if (response.ok) {
-                const bytes = Array.from(
-                  new Uint8Array(await (await response.blob()).arrayBuffer()),
-                );
-                await saveImage(selected.path, game.fileName, bytes);
-              }
-            }
-          }
-        } catch {
-          // un juego sin resultado no detiene la búsqueda del resto
-        }
-        setBatchProgress((value) =>
-          value ? { ...value, done: value.done + 1 } : value,
-        );
-      }
-    });
-
-    try {
-      await Promise.all(workers);
-      await selectSystem(selected);
-      setSystems(await scanSd(root));
-    } finally {
-      setBatchProgress(null);
-    }
   }
 
   async function loadFullLibrary() {
@@ -1066,13 +511,13 @@ function App() {
             selected={selected}
             totalGames={totalGames}
             error={error}
-            batchProgress={batchProgress}
-            markedNoCover={markedNoCover}
+            batchProgress={artwork.batchProgress}
+            markedNoCover={artwork.markedNoCover}
             onChooseRoot={chooseRoot}
             onOpenFolder={openSdFolder}
             onAddGame={openAdd}
             onDismissError={() => setError("")}
-            onSearchMissingCovers={searchMissingCovers}
+            onSearchMissingCovers={artwork.searchMissingCovers}
             onChangeImage={startImage}
             onRemoveGame={removeGameFromCatalog}
           />
@@ -1117,22 +562,24 @@ function App() {
       {modal === "image" && (
         <ArtworkModal
           game={targetGame}
-          imagePreview={imagePreview}
-          imageStatus={imageStatus}
-          imageBytes={imageBytes}
-          progress={artworkProgress}
-          warning={artworkWarning}
-          matches={artworkMatches}
+          imagePreview={artwork.imagePreview}
+          imageStatus={artwork.imageStatus}
+          imageBytes={artwork.imageBytes}
+          progress={artwork.artworkProgress}
+          warning={artwork.artworkWarning}
+          matches={artwork.artworkMatches}
           loading={loading}
           onClose={() => setModal(null)}
           onSearch={() => {
             if (targetGame)
-              void searchArtwork(targetGame.title, targetGame.fileName, false);
+              void artwork.searchArtwork(targetGame.title, targetGame.fileName);
           }}
-          onChooseMatch={chooseArtwork}
-          onSelectImage={selectImage}
+          onChooseMatch={(match) => {
+            if (targetGame) void artwork.chooseArtwork(match, targetGame.fileName);
+          }}
+          onSelectImage={artwork.selectImage}
           onSave={saveGameImage}
-          onMarkNoCover={markCurrentGameNoCover}
+          onMarkNoCover={() => artwork.markNoCover(targetGame?.fileName)}
         />
       )}
 
