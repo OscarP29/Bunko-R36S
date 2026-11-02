@@ -19,6 +19,6 @@
       "assetProtocol": { "enable": true, "scope": [] }
     }
   },
-  "bundle": { "active": true, "targets": "all", "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.icns", "icons/icon.ico"] },
+  "bundle": { "active": true, "targets": "all", "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png", "icons/icon.icns", "icons/icon.ico"], "windows": { "nsis": { "installerIcon": "icons/icon.ico" } } },
   "plugins": { "http": { "scopeRedirects": true } }
 }
