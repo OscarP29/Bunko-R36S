@@ -194,7 +194,7 @@ export function Sidebar({
           </button>
           <div className="sidebar-footer">
             <span className="version-dot" />
-            Bunko <span>v0.3.0</span>
+            Bunko <span>v0.4.0</span>
           </div>
         </div>
       </aside>

@@ -1,8 +1,11 @@
 import { convertFileSrc, isTauri } from "@tauri-apps/api/core";
 
-/** URL para mostrar una imagen local dentro del webview. */
-export const fileUrl = (path: string | null) =>
-  path && isTauri() ? convertFileSrc(path) : "";
+/**
+ * URL para mostrar una imagen local dentro del webview. `version` (la fecha de
+ * modificación) cambia la URL al reemplazar el archivo, para no ver la caché.
+ */
+export const fileUrl = (path: string | null, version?: number | null) =>
+  path && isTauri() ? convertFileSrc(path) + (version ? `?v=${version}` : "") : "";
 
 export const formatSize = (count: number) => new Intl.NumberFormat("es-CO").format(count);
 

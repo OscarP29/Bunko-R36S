@@ -16,14 +16,20 @@
 
 ---
 
-**Bunko** es una aplicación de escritorio para administrar la tarjeta microSD de una consola **R36S** o sus clones. Conectas la tarjeta, eliges la carpeta de ROMs y tienes toda tu biblioteca a la vista, con búsqueda de carátulas y una lista de juegos por conseguir.
+**Bunko** es una aplicación de escritorio para administrar la tarjeta microSD de una consola **R36S** o sus clones. Conectas la tarjeta, eliges la carpeta de ROMs y tienes toda tu biblioteca a la vista: carátulas, orden de la lista, partidas guardadas y hasta los sonidos y fondos de la consola.
+
+<p align="center">
+  <img src="docs/assets/bunko-biblioteca.png" alt="Biblioteca de Bunko con las carátulas de los juegos de GBA" width="900" />
+</p>
 
 ## Funciones
 
 ### 🎮 Biblioteca
-- Detecta los sistemas de la tarjeta y lee su `filelist.csv`.
-- Búsqueda, filtros, orden y vistas de cuadrícula o lista.
-- Añade varias ROMs de una vez y quita juegos del catálogo sin borrar el archivo.
+- Detecta los sistemas de la tarjeta por su `filelist.csv` y reconoce los nombres de carpeta de CubeGM (`FC`, `SFC`, `MD`, `GG`, `NGPC`, `SWC`…).
+- Búsqueda, filtros (sin carátula, favoritos), orden y vistas de cuadrícula o lista.
+- Añade varias ROMs de una vez. Los `.7z` y los `.zip` de GBA y NES se pueden extraer al copiar.
+- Renombra juegos, cambia su carátula o quítalos del catálogo sin borrar la ROM, desde el menú contextual de cada juego.
+- **Organiza** el orden de `filelist.csv`, que es el que sigue la consola: alfabético o agrupado por sagas.
 - Muestra el espacio libre de la microSD.
 
 ### 🖼️ Carátulas
@@ -31,8 +37,19 @@
 - Encuentra todas las faltantes de un sistema, o las de todos los juegos que vas a añadir, en un solo clic.
 - También puedes subir tus propias imágenes: se convierten a PNG de 512 × 512.
 
+### 💾 Partidas y favoritos (R36SX con CubeGM)
+- Muestra con una estrella los juegos que marcaste como favoritos en la consola.
+- Copia tus partidas guardadas y rápidas al PC, restáuralas en la misma tarjeta y mueve al PC las de juegos que ya no están.
+- Cada tarjeta lleva su propia ficha, así que las copias de varias consolas no se mezclan.
+
+### 🎨 Personaliza la consola (R36SX con CubeGM)
+- Cambia la música de fondo y los efectos de sonido.
+- Cambia los fondos de los menús y sistemas, y los logos de arranque y apagado.
+- Antes del primer cambio se guarda el original, y puedes restaurarlo cuando quieras.
+
 ### 📝 Lista de pendientes
-- Anota juegos por categoría, consola y prioridad, y márcalos al conseguirlos.
+- Anota juegos por categoría, consola y prioridad, con autocompletado del título, y márcalos al conseguirlos.
+- Vacía la lista de una vez, con unos segundos para deshacerlo.
 - Genera un prompt con tu biblioteca para que una IA te recomiende juegos, e importa el resultado.
 - La lista se guarda en la propia tarjeta, así que viaja con ella.
 
@@ -60,8 +77,9 @@ Descarga el instalador de Windows desde [**Releases**](https://github.com/OscarP
 
 1. Conecta la microSD de tu R36S al equipo.
 2. Abre Bunko y elige la carpeta de ROMs de la tarjeta.
-3. Bunko detecta los sistemas que tengan un `filelist.csv`.
-4. Cuando termines, usa **Expulsar microSD** antes de retirar la tarjeta.
+3. Bunko detecta los sistemas que tengan un `filelist.csv`. Si una ROM no está en ese archivo, Bunko no la ve.
+4. En **Configuración → Consola** elige el modelo de tu consola para activar partidas, favoritos y personalización.
+5. Cuando termines, usa **Expulsar microSD** antes de retirar la tarjeta.
 
 > [!IMPORTANT]
 > Bunko escribe en tu tarjeta: guarda copias de `filelist.csv` antes de modificarlo y escribe de forma atómica, pero conviene tener una copia de seguridad de la microSD.
@@ -87,15 +105,15 @@ npm run tauri dev
 
 ### Publicar una versión
 
-1. Sube la versión en `package.json`, `src-tauri/tauri.conf.json` y `src-tauri/Cargo.toml`.
+1. Sube la versión en `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` y el pie de la barra lateral (`src/components/Sidebar.tsx`).
 2. Crea y sube una etiqueta:
 
 ```bash
-git tag v0.1.0
+git tag v0.4.0
 ```
 
 ```bash
-git push origin v0.1.0
+git push origin v0.4.0
 ```
 
 GitHub Actions compila los instaladores y deja un **borrador** en Releases para revisarlo y publicarlo.

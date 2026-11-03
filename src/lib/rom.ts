@@ -46,7 +46,8 @@ export function regionRank(name: string): number {
 /**
  * Traduce el nombre de la carpeta del emulador al nombre exacto de la consola
  * en Libretro. Para añadir un sistema, agrega una entrada a `names`; la clave es
- * el nombre de carpeta en minúsculas y sin signos ni espacios.
+ * el nombre de carpeta en minúsculas y sin signos ni espacios. Incluye los
+ * nombres cortos de CubeGM (FC, SFC, MD, GG, NGPC, SWC).
  */
 export function guessLibretroSystem(folder: string): string {
   const key = folder.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -62,17 +63,21 @@ export function guessLibretroSystem(folder: string): string {
     nes: "Nintendo - Nintendo Entertainment System",
     nintendoentertainmentsystem: "Nintendo - Nintendo Entertainment System",
     famicom: "Nintendo - Nintendo Entertainment System",
+    fc: "Nintendo - Nintendo Entertainment System",
     snes: "Nintendo - Super Nintendo Entertainment System",
     snes9x: "Nintendo - Super Nintendo Entertainment System",
     supernintendo: "Nintendo - Super Nintendo Entertainment System",
+    sfc: "Nintendo - Super Nintendo Entertainment System",
     n64: "Nintendo - Nintendo 64",
     psx: "Sony - PlayStation",
     ps1: "Sony - PlayStation",
     psp: "Sony - PlayStation Portable",
     genesis: "Sega - Mega Drive - Genesis",
     megadrive: "Sega - Mega Drive - Genesis",
+    md: "Sega - Mega Drive - Genesis",
     sms: "Sega - Master System - Mark III",
     gamegear: "Sega - Game Gear",
+    gg: "Sega - Game Gear",
     dreamcast: "Sega - Dreamcast",
     saturn: "Sega - Saturn",
     arcade: "MAME",
@@ -80,6 +85,9 @@ export function guessLibretroSystem(folder: string): string {
     fbneo: "FB Neo - Arcade Games",
     wonderswan: "Bandai - WonderSwan",
     wonderswancolor: "Bandai - WonderSwan Color",
+    swc: "Bandai - WonderSwan Color",
+    ngp: "SNK - Neo Geo Pocket",
+    ngpc: "SNK - Neo Geo Pocket Color",
     pokemini: "Nintendo - Pokemon Mini",
     lynx: "Atari - Lynx",
     atari2600: "Atari - 2600",

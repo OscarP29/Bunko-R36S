@@ -31,6 +31,7 @@ struct Game {
     title: String,
     image_name: Option<String>,
     image_path: Option<String>,
+    image_version: Option<u64>,
     has_image: bool,
 }
 
@@ -201,7 +202,7 @@ fn write_atomic_with_backup(path: &Path, bytes: &[u8]) -> Result<(), String> {
 // Imágenes
 // ---------------------------------------------------------------------------
 
-/// Índice de `images/`: nombre del archivo agrupado por su primer segmento en
+/// Índice de `images/`: nombre del archivo sin su última extensión, en
 /// minúsculas. Permite resolver todas las carátulas con un solo `read_dir`.
 type ImageIndex = HashMap<String, Vec<String>>;
 
@@ -219,30 +220,47 @@ fn index_images(dir: &Path) -> ImageIndex {
             continue;
         }
         let name = entry.file_name().to_string_lossy().to_string();
-        // Solo archivos con extensión: "Juego.png", "Juego (USA).png"…
-        let Some((first, _)) = name.split_once('.') else {
+        // "Juego.png" → "juego", "Juego.gba.png" → "juego.gba",
+        // "Super Mario Bros. 3.png" → "super mario bros. 3".
+        let Some((base, _)) = name.rsplit_once('.') else {
             continue;
         };
-        if first.is_empty() {
+        if base.is_empty() {
             continue;
         }
-        index.entry(first.to_lowercase()).or_default().push(name);
+        index.entry(base.to_lowercase()).or_default().push(name);
     }
     for names in index.values_mut() {
-        names.sort();
+        // El PNG primero: es el que escribe Bunko al guardar una carátula.
+        names.sort_by_key(|name| (!name.to_lowercase().ends_with(".png"), name.clone()));
     }
     index
 }
 
+/// Carátulas de una ROM, de más a menos preferida: primero `<rom sin
+/// extensión>.*` (lo que escribe `save_image`) y después `<rom con extensión>.*`.
 fn rom_image_names(index: &ImageIndex, file_name: &str) -> Vec<String> {
     let stem = Path::new(file_name)
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or(file_name);
-    let mut names = index.get(&stem.to_lowercase()).cloned().unwrap_or_default();
-    names.sort();
-    names.dedup();
+    let mut names: Vec<String> = Vec::new();
+    for key in [stem, file_name] {
+        for name in index.get(&key.to_lowercase()).into_iter().flatten() {
+            if !names.contains(name) {
+                names.push(name.clone());
+            }
+        }
+    }
     names
+}
+
+/// Fecha de modificación en milisegundos. El frontend la añade a la URL de la
+/// carátula para que el webview no siga mostrando la copia en caché.
+fn modified_ms(path: &Path) -> Option<u64> {
+    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let elapsed = modified.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(elapsed.as_millis() as u64)
 }
 
 fn encode_cover(bytes: &[u8]) -> Result<Vec<u8>, String> {
@@ -284,9 +302,9 @@ fn game_from_row(dir: &Path, index: &ImageIndex, file_name: &str, listed_title: 
         listed_title.to_string()
     };
     let image_name = rom_image_names(index, file_name).into_iter().next();
-    let image_path = image_name
-        .as_ref()
-        .map(|name| dir.join("images").join(name).to_string_lossy().to_string());
+    let image_file = image_name.as_ref().map(|name| dir.join("images").join(name));
+    let image_version = image_file.as_deref().and_then(modified_ms);
+    let image_path = image_file.map(|path| path.to_string_lossy().to_string());
     let has_image = image_name.is_some();
     Game {
         id: file_name.to_string(),
@@ -294,6 +312,7 @@ fn game_from_row(dir: &Path, index: &ImageIndex, file_name: &str, listed_title: 
         title,
         image_name,
         image_path,
+        image_version,
         has_image,
     }
 }
@@ -1044,17 +1063,17 @@ fn write_sagas(state: State<AppState>, content: String) -> Result<(), String> {
 }
 
 #[tauri::command(async)]
-fn unmount_sd(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+fn unmount_sd(state: State<AppState>) -> Result<(), String> {
     // Espera a que terminen las escrituras en curso antes de liberar la tarjeta.
     let _disk = disk_write(&state)?;
     let mut root = state
         .root
         .lock()
         .map_err(|_| "Estado interno bloqueado".to_string())?;
-    if let Some(path) = root.clone() {
-        let scope = app.asset_protocol_scope();
-        let _ = scope.forbid_directory(&path, true);
-    }
+    // No se usa `forbid_directory`: en el scope de Tauri lo prohibido gana
+    // siempre y no se puede deshacer, así que al volver a conectar la misma
+    // tarjeta todas las carátulas salían rotas. Sin raíz activa los comandos
+    // ya rechazan cualquier ruta, y el protocolo de assets solo da lectura.
     *root = None;
     Ok(())
 }
@@ -1288,6 +1307,33 @@ mod tests {
         assert!(names.contains(&"Juego A.gba.png".to_string()));
         assert!(!names.contains(&"Juego A (USA).jpg".to_string()));
         assert!(!names.contains(&"otro.png".to_string()));
+    }
+
+    #[test]
+    fn el_indice_de_imagenes_acepta_puntos_en_el_nombre() {
+        let dir = TempDir::new("images-dots");
+        let images = dir.path().join("images");
+        fs::create_dir_all(&images).unwrap();
+        fs::write(images.join("Super Mario Bros. 3.png"), b"x").unwrap();
+        let index = index_images(dir.path());
+        assert_eq!(
+            rom_image_names(&index, "Super Mario Bros. 3.nes"),
+            vec!["Super Mario Bros. 3.png".to_string()]
+        );
+    }
+
+    #[test]
+    fn la_caratula_que_guarda_bunko_gana_a_las_variantes() {
+        let dir = TempDir::new("images-prefer");
+        let images = dir.path().join("images");
+        fs::create_dir_all(&images).unwrap();
+        for name in ["Juego A.gba.png", "Juego A.jpg", "Juego A.png"] {
+            fs::write(images.join(name), b"x").unwrap();
+        }
+        let index = index_images(dir.path());
+        let names = rom_image_names(&index, "Juego A.gba");
+        assert_eq!(names[0], "Juego A.png");
+        assert_eq!(names.len(), 3);
     }
 
     #[test]

@@ -48,7 +48,7 @@ export function ArtworkModal(props: ArtworkModalProps) {
           <div className="target-game">
             <div className="target-cover">
               {props.game?.imagePath ? (
-                <img src={fileUrl(props.game.imagePath)} alt="" />
+                <img src={fileUrl(props.game.imagePath, props.game.imageVersion)} alt="" />
               ) : (
                 <Gamepad2 size={20} />
               )}

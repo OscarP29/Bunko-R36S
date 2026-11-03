@@ -42,7 +42,7 @@ export function GameCard({
     <article className="game-card" onContextMenu={openMenu}>
       <div className={`game-cover ${game.hasImage ? "has-art" : "no-art"}`}>
         {game.imagePath ? (
-          <img src={fileUrl(game.imagePath)} alt={`Carátula de ${game.title}`} loading="lazy" />
+          <img src={fileUrl(game.imagePath, game.imageVersion)} alt={`Carátula de ${game.title}`} loading="lazy" />
         ) : (
           <>
             <div className="cover-glow" />

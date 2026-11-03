@@ -4,6 +4,7 @@ export type Game = {
   title: string;
   imageName: string | null;
   imagePath: string | null;
+  imageVersion: number | null;
   hasImage: boolean;
 };
 

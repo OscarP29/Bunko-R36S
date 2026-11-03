@@ -52,6 +52,9 @@ test("guessLibretroSystem traduce carpetas conocidas y conserva las desconocidas
   assert.equal(guessLibretroSystem("gba"), "Nintendo - Game Boy Advance");
   assert.equal(guessLibretroSystem("Snes9x"), "Nintendo - Super Nintendo Entertainment System");
   assert.equal(guessLibretroSystem("Nintendo_DS"), "Nintendo - Nintendo DS");
+  assert.equal(guessLibretroSystem("SFC"), "Nintendo - Super Nintendo Entertainment System");
+  assert.equal(guessLibretroSystem("FC"), "Nintendo - Nintendo Entertainment System");
+  assert.equal(guessLibretroSystem("MD"), "Sega - Mega Drive - Genesis");
   assert.equal(guessLibretroSystem("mi_consola-rara"), "mi consola-rara");
 });
 
