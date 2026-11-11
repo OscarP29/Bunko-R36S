@@ -106,21 +106,23 @@ npm run tauri dev
 
 ### Publicar una versión
 
-1. Sube la versión en `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` y el pie de la barra lateral (`src/components/Sidebar.tsx`).
-2. Crea y sube una etiqueta:
+1. Anota los cambios en [`CHANGELOG.md`](CHANGELOG.md).
+2. Sube la versión en `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml` y el pie de la barra lateral (`src/components/Sidebar.tsx`).
+3. Crea y sube una etiqueta:
 
 ```bash
-git tag v0.4.0
+git tag v0.5.0
 ```
 
 ```bash
-git push origin v0.4.0
+git push origin v0.5.0
 ```
 
 GitHub Actions compila los instaladores y deja un **borrador** en Releases para revisarlo y publicarlo.
 
 ### Documentación
 
+- [`CHANGELOG.md`](CHANGELOG.md): cambios de cada versión.
 - [`docs/CONTEXTO.md`](docs/CONTEXTO.md): arquitectura, decisiones técnicas y detalles internos.
 - [`DESIGN.md`](DESIGN.md): sistema de diseño. Es lectura obligatoria antes de tocar la interfaz.
 
