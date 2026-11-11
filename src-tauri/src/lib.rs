@@ -14,6 +14,7 @@ mod deflated_zip;
 mod logos;
 mod look;
 mod saves;
+mod sheets;
 
 /// Tamaño final de todas las carátulas guardadas en la microSD.
 const COVER_SIZE: u32 = 512;

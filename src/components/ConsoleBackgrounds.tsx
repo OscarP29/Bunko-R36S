@@ -58,6 +58,11 @@ export function ConsoleBackgrounds({ enabled, cardId, workDir, disabledReason }:
             trabajo para poder restaurarlo.
           </p>
           <p className="settings-intro">
+            En la lista de juegos y el buscador, Bunko rehace sobre tu imagen
+            la fila elegida, los títulos, los iconos y el teclado, que siguen
+            viéndose igual.
+          </p>
+          <p className="settings-intro">
             Al cambiar el mapa de teclas, Bunko rehace las teclas resaltadas
             sobre el fondo nuevo. Si prefieres las tuyas, súbelas después como
             una tira de 66 × 492 con los botones X, Y, R1, A, B y L1.

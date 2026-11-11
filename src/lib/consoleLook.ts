@@ -20,11 +20,13 @@ export const isMusicSlot = (file: string) => file.toLowerCase().endsWith(".mp3")
 type BackgroundGroup = "Menú" | "Sistemas" | "Multimedia" | "Ajustes";
 
 /**
- * Qué pantalla de CubeGM usa cada fondo de `UI_Res.cpd`. `load_bg` viene de
- * `resource.cpd` y `KeyMap_Key` es la tira de teclas resaltadas.
+ * Qué pantalla de CubeGM usa cada fondo de `UI_Res.cpd`. `load_bg`, `menu` y
+ * `search` vienen de `resource.cpd`; `KeyMap_Key` es la tira de teclas resaltadas.
  */
 const BACKGROUNDS: Record<string, { label: string; group: BackgroundGroup }> = {
   load_bg: { label: "Pantalla de carga", group: "Menú" },
+  menu: { label: "Lista de juegos", group: "Menú" },
+  search: { label: "Buscador", group: "Menú" },
   AllEMU: { label: "Todos los juegos", group: "Menú" },
   FAVORITE: { label: "Favoritos", group: "Menú" },
   HISTORY: { label: "Recientes", group: "Menú" },
