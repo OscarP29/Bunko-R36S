@@ -44,6 +44,7 @@
 
 ### 🎨 Personaliza la consola (R36SX con CubeGM)
 - Cambia la música de fondo y los efectos de sonido.
+- Elige con qué emulador abre la consola cada juego, para los que van lentos o fallan.
 - Cambia los fondos de los menús y sistemas, la pantalla de carga, la lista de juegos, el buscador, el menú de pausa y los logos de arranque y apagado.
 - Antes del primer cambio se guarda el original, y puedes restaurarlo cuando quieras.
 

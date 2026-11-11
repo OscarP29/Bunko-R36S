@@ -5,6 +5,8 @@ import { Button } from "./ui/Button.tsx";
 import { Field } from "./ui/Field.tsx";
 import { Segmented } from "./ui/Segmented.tsx";
 import { autoSaga } from "../lib/sagas.ts";
+import { coreHint } from "../lib/cores.ts";
+import type { GameCores } from "../lib/backend.ts";
 import type { Game } from "../lib/types.ts";
 
 type SagaMode = "auto" | "custom" | "none";
@@ -21,9 +23,12 @@ type EditGameModalProps = {
   saga: string | undefined;
   /** Sagas ya usadas en el sistema, para sugerirlas. */
   knownSagas: string[];
+  /** Emuladores que abren el juego; `null` mientras se leen. */
+  cores: GameCores | null;
   saving: boolean;
   onClose: () => void;
-  onSave: (title: string, saga: string | undefined) => void;
+  /** `core` = emulador elegido; `null` = el del sistema. */
+  onSave: (title: string, saga: string | undefined, core: string | null) => void;
 };
 
 export function EditGameModal(props: EditGameModalProps) {
@@ -32,13 +37,17 @@ export function EditGameModal(props: EditGameModalProps) {
     props.saga === undefined ? "auto" : props.saga ? "custom" : "none",
   );
   const [customSaga, setCustomSaga] = useState(props.saga ?? "");
+  /** `undefined` hasta que se toque: así vale el asignado aunque llegue tarde. */
+  const [pickedCore, setPickedCore] = useState<string | null>();
+  const core = pickedCore === undefined ? (props.cores?.current ?? null) : pickedCore;
+  const hint = core ? coreHint(core) : undefined;
   const suggested = autoSaga(title);
   const valid = title.trim() && (mode !== "custom" || customSaga.trim());
 
   function save() {
     if (!valid) return;
     const saga = mode === "auto" ? undefined : mode === "none" ? "" : customSaga.trim();
-    props.onSave(title.trim(), saga);
+    props.onSave(title.trim(), saga, core);
   }
 
   return (
@@ -67,7 +76,7 @@ export function EditGameModal(props: EditGameModalProps) {
             />
           </Field>
 
-          <div className="edit-game-saga">
+          <div className="edit-game-section">
             <span className="field-label">Saga</span>
             <Segmented label="Saga" value={mode} options={SAGA_OPTIONS} onChange={setMode} />
             {mode === "auto" && (
@@ -92,6 +101,26 @@ export function EditGameModal(props: EditGameModalProps) {
             )}
             {mode === "none" && <p>Se ordenará solo por su nombre.</p>}
           </div>
+
+          {props.cores && props.cores.options.length > 0 && (
+            <div className="edit-game-section">
+              <Field label="Emulador">
+                <select
+                  className="text-field"
+                  value={core ?? ""}
+                  onChange={(event) => setPickedCore(event.target.value || null)}
+                >
+                  <option value="">El del sistema</option>
+                  {props.cores.options.map((option) => (
+                    <option key={option.file} value={option.file}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p>{hint ?? "Si el juego va lento o falla, prueba con otro y vuelve a abrirlo en la consola."}</p>
+            </div>
+          )}
         </div>
 
         <div className="modal-footer">

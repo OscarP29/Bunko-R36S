@@ -10,6 +10,7 @@ use std::{
 use tauri::{AppHandle, Manager, State};
 
 mod backgrounds;
+mod cores;
 mod deflated_zip;
 mod logos;
 mod look;
@@ -739,6 +740,34 @@ fn reorder_games(
     reorder_games_impl(&require_system(&state, &system_path)?, &order)
 }
 
+/// Nombre de archivo sin carpetas, para no salir de la carpeta del sistema.
+fn plain_file_name(file_name: &str) -> Result<&str, String> {
+    Path::new(file_name)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| *name == file_name)
+        .ok_or_else(|| "Nombre de archivo inválido".to_string())
+}
+
+#[tauri::command(async)]
+fn game_cores(state: State<AppState>, system_path: String, file_name: String) -> Result<cores::GameCores, String> {
+    let _disk = disk_read(&state)?;
+    let dir = require_system(&state, &system_path)?;
+    cores::game_cores(&require_root(&state)?, &dir, plain_file_name(&file_name)?)
+}
+
+#[tauri::command(async)]
+fn set_game_core(
+    state: State<AppState>,
+    system_path: String,
+    file_name: String,
+    core: Option<String>,
+) -> Result<(), String> {
+    let _disk = disk_write(&state)?;
+    let dir = require_system(&state, &system_path)?;
+    cores::set_game_core(&require_root(&state)?, &dir, plain_file_name(&file_name)?, core.as_deref())
+}
+
 #[tauri::command(async)]
 fn save_image(
     state: State<AppState>,
@@ -1150,6 +1179,8 @@ pub fn run() {
             remove_game,
             rename_game,
             reorder_games,
+            game_cores,
+            set_game_core,
             save_image,
             open_folder,
             disk_space,

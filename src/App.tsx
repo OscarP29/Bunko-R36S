@@ -21,6 +21,7 @@ import { useSettings } from "./hooks/useSettings.ts";
 import { useShortcuts } from "./hooks/useShortcuts.ts";
 import {
   addGames,
+  gameCores,
   getDiskSpace,
   listGames,
   openFolder,
@@ -31,9 +32,11 @@ import {
   reorderGames,
   saveImage,
   scanSd,
+  setGameCore,
   unmountSd,
   writeNotes,
   type DiskSpace,
+  type GameCores,
 } from "./lib/backend.ts";
 import type { Command } from "./lib/commands.ts";
 import { archiveAdvice, cleanTitle, systemFolder } from "./lib/rom.ts";
@@ -73,6 +76,8 @@ function App() {
   const [error, setError] = useState("");
   const [modal, setModal] = useState<"add" | "image" | "edit" | "organize" | null>(null);
   const [targetGame, setTargetGame] = useState<Game | null>(null);
+  /** Emuladores del juego que se está editando; `null` mientras se leen. */
+  const [targetCores, setTargetCores] = useState<GameCores | null>(null);
   const [drafts, setDrafts] = useState<NewGameDraft[]>([]);
   const [fullLibrary, setFullLibrary] = useState<FullEntry[]>([]);
   const [loadingFullLibrary, setLoadingFullLibrary] = useState(false);
@@ -559,15 +564,24 @@ function App() {
 
   function startEdit(game: Game) {
     setTargetGame(game);
+    setTargetCores(null);
     setModal("edit");
+    if (!selected) return;
+    // Si no se puede leer, el juego se edita igual, sin elegir emulador.
+    gameCores(selected.path, game.fileName)
+      .then(setTargetCores)
+      .catch(() => setTargetCores({ options: [], current: null }));
   }
 
-  async function saveGameEdit(title: string, saga: string | undefined) {
+  async function saveGameEdit(title: string, saga: string | undefined, core: string | null) {
     if (!selected || !targetGame) return;
     setLoading(true);
     try {
       if (title !== targetGame.title) {
         await renameGame(selected.path, targetGame.fileName, title);
+      }
+      if (targetCores && core !== targetCores.current) {
+        await setGameCore(selected.path, targetGame.fileName, core);
       }
       await sagas.setSaga(systemFolder(selected), targetGame.fileName, saga);
       setModal(null);
@@ -907,6 +921,7 @@ function App() {
         <EditGameModal
           game={targetGame}
           saga={sagaOverrides[targetGame.fileName]}
+          cores={targetCores}
           knownSagas={Array.from(
             new Set(games.map((game) => sagaOf(game, sagaOverrides)).filter((s): s is string => Boolean(s))),
           ).sort((a, b) => a.localeCompare(b, "es"))}

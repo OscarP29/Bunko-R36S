@@ -28,6 +28,19 @@ export const removeGame = (systemPath: string, fileName: string) =>
 export const renameGame = (systemPath: string, fileName: string, title: string) =>
   invoke<void>("rename_game", { systemPath, fileName, title });
 
+/** Emulador de la consola (`cubegm/cores/config.xml`). */
+export type Core = { file: string; name: string };
+
+/** Emuladores que abren el juego y el que tiene asignado; `current` vacío = el del sistema. */
+export type GameCores = { options: Core[]; current: string | null };
+
+export const gameCores = (systemPath: string, fileName: string) =>
+  invoke<GameCores>("game_cores", { systemPath, fileName });
+
+/** Asigna un emulador al juego; `null` lo deja con el del sistema. */
+export const setGameCore = (systemPath: string, fileName: string, core: string | null) =>
+  invoke<void>("set_game_core", { systemPath, fileName, core });
+
 /** Reescribe `filelist.csv` en este orden, que es el que muestra la consola. */
 export const reorderGames = (systemPath: string, order: string[]) =>
   invoke<void>("reorder_games", { systemPath, order });

@@ -10,17 +10,17 @@
   font-size: calc(14px * var(--font-scale));
 }
 
-.edit-game-saga {
+.edit-game-section {
   display: grid;
   gap: 8px;
 }
 
-.edit-game-saga .field-label {
+.edit-game-section .field-label {
   margin: 0;
   font-size: calc(12px * var(--font-scale));
 }
 
-.edit-game-saga p {
+.edit-game-section p {
   margin: 0;
   color: var(--muted);
   font-size: calc(14px * var(--font-scale));
