@@ -15,6 +15,7 @@
 //!   en RGB565. Ese `.cpd` sí va comprimido; ver [`crate::deflated_zip`].
 
 use crate::deflated_zip;
+use crate::pause_menu::{self, PAUSE};
 use crate::sheets;
 use crate::look::{originals_folder, read_originals, write_originals, Originals, CUBEGM_DIR};
 use crate::write_atomic;
@@ -29,7 +30,7 @@ const SCREEN_BYTES: usize = (SCREEN_WIDTH * SCREEN_HEIGHT * 4) as usize;
 const THUMB_WIDTH: u32 = 320;
 const THUMB_HEIGHT: u32 = 240;
 
-const RESOURCE_FILE: &str = "resource.cpd";
+pub(crate) const RESOURCE_FILE: &str = "resource.cpd";
 /// Pantalla de carga, dentro de `resource.cpd`.
 pub const LOADING: &str = "load_bg.raw";
 const LOADING_BYTES: usize = (SCREEN_WIDTH * SCREEN_HEIGHT * 2) as usize;
@@ -194,7 +195,7 @@ fn find_screen<'a>(entries: &'a [Entry], name: &str) -> Result<&'a Entry, String
         .ok_or_else(|| format!("La consola no tiene el fondo {name}"))
 }
 
-fn resource_path(root: &Path) -> std::path::PathBuf {
+pub(crate) fn resource_path(root: &Path) -> std::path::PathBuf {
     root.join(CUBEGM_DIR).join(RESOURCE_FILE)
 }
 
@@ -232,19 +233,29 @@ fn resource_base(name: &str, data: &[u8]) -> Result<RgbImage, String> {
     Ok(RgbImage::from_raw(SCREEN_WIDTH, SCREEN_HEIGHT, sheets::base_rgb(data, &pieces)).expect("tamaño de pantalla"))
 }
 
+/// La imagen ajustada a 640×480 (recortando para llenar) en RGB.
+pub(crate) fn fit_rgb(image: &DynamicImage) -> Vec<u8> {
+    fit_bgra(image, SCREEN_WIDTH, SCREEN_HEIGHT, false, 255)
+        .chunks_exact(4)
+        .flat_map(|p| [p[2], p[1], p[0]])
+        .collect()
+}
+
 /// Datos nuevos de una pantalla de `resource.cpd` con `image` de fondo.
 fn resource_data(name: &str, old: &[u8], image: &DynamicImage) -> Result<Vec<u8>, String> {
     if name == LOADING {
         return Ok(image_to_rgb565(image));
     }
     let pieces = sheets::parse(old, name)?;
-    let rgb: Vec<u8> = fit_bgra(image, SCREEN_WIDTH, SCREEN_HEIGHT, false, 255)
-        .chunks_exact(4)
-        .flat_map(|p| [p[2], p[1], p[0]])
-        .collect();
+    let rgb = fit_rgb(image);
     // En el buscador el teclado y la barra de texto forman parte del fondo.
     let keep: Vec<_> = if name == SEARCH {
-        pieces[1..].iter().map(|p| (p.x0, p.y0, p.x1, p.y1)).chain([SEARCH_FIELD]).collect()
+        let (x0, y0, x1, y1) = SEARCH_FIELD;
+        pieces[1..]
+            .iter()
+            .map(|p| sheets::Keep { x0: p.x0, y0: p.y0, x1: p.x1, y1: p.y1, from: 55 })
+            .chain([sheets::Keep { x0, y0, x1, y1, from: 55 }])
+            .collect()
     } else {
         Vec::new()
     };
@@ -267,6 +278,9 @@ pub fn list_backgrounds(root: &Path, work_dir: &str) -> Result<Vec<Background>, 
                 list.push(Background { customized: customized.iter().any(|item| item == name), name: name.into() });
             }
         }
+    }
+    if pause_menu::available(root) {
+        list.push(Background { customized: customized.iter().any(|item| item == PAUSE), name: PAUSE.into() });
     }
     Ok(list)
 }
@@ -313,7 +327,9 @@ fn tiles_side_by_side(raw: &[u8]) -> RgbImage {
 
 /// Miniatura JPEG de 320×240 para la vista previa.
 pub fn background_preview(root: &Path, name: &str) -> Result<Vec<u8>, String> {
-    let full = if is_resource_screen(name) {
+    let full = if name == PAUSE {
+        pause_menu::preview(root)?
+    } else if is_resource_screen(name) {
         let (bytes, entries) = read_resource(root)?;
         resource_base(name, &resource_screen(&bytes, &entries, name)?)?
     } else {
@@ -388,7 +404,7 @@ fn rewrite_ui(root: &Path, ui: &[u8], entries: &[Entry], changes: &[(&str, Vec<u
 }
 
 /// Guarda una copia del archivo original de la tarjeta antes del primer cambio.
-fn keep_original(folder: &Path, originals: &mut Originals, file: &str, bytes: &[u8]) -> Result<(), String> {
+pub(crate) fn keep_original(folder: &Path, originals: &mut Originals, file: &str, bytes: &[u8]) -> Result<(), String> {
     if !originals.files.contains_key(file) {
         fs::create_dir_all(folder).map_err(|e| format!("No se pudo crear la carpeta de originales: {e}"))?;
         fs::write(folder.join(file), bytes).map_err(|e| format!("No se pudo guardar el original de {file}: {e}"))?;
@@ -397,7 +413,7 @@ fn keep_original(folder: &Path, originals: &mut Originals, file: &str, bytes: &[
     Ok(())
 }
 
-fn mark_customized(originals: &mut Originals, name: &str) {
+pub(crate) fn mark_customized(originals: &mut Originals, name: &str) {
     if !originals.backgrounds.iter().any(|item| item == name) {
         originals.backgrounds.push(name.to_string());
     }
@@ -442,6 +458,11 @@ pub fn replace_background(root: &Path, work_dir: &str, name: &str, source: &Path
     if is_resource_screen(name) {
         return replace_resource(root, work_dir, name, &image);
     }
+    if name == PAUSE {
+        let (folder, card_id) = originals_folder(root, work_dir)?;
+        let mut originals = read_originals(&folder, &card_id);
+        return pause_menu::replace(root, &folder, &mut originals, &image);
+    }
     let data = if name == KEY_TILES {
         fit_bgra(&image, TILE_WIDTH, TILES_HEIGHT, false, 255)
     } else {
@@ -478,6 +499,9 @@ pub fn restore_background(root: &Path, work_dir: &str, name: &str) -> Result<(),
     }
     if is_resource_screen(name) {
         return restore_resource(root, &folder, &mut originals, name);
+    }
+    if name == PAUSE {
+        return pause_menu::restore(root, &folder, &mut originals);
     }
     let original = fs::read(folder.join(UI_FILE)).map_err(|e| format!("No se encontró el UI_Res.cpd original: {e}"))?;
     let original_entries = read_entries(&original)?;
@@ -693,6 +717,47 @@ mod tests {
     }
 
     #[test]
+    fn cambia_el_menu_de_pausa_de_todos_los_idiomas_y_lo_restaura() {
+        let (sd, pc, picture) = card("pause");
+        let work = pc.0.to_string_lossy().to_string();
+        let sheet = sheets::tests::sample();
+        let pack = deflated_zip::mask(&deflated_zip::tests::sample(&[("game.raw", &sheet), ("game_1.raw", &sheet)])).unwrap();
+        fs::write(sd.0.join("cubegm/ui_es.cpd"), &pack).unwrap();
+        fs::write(sd.0.join("cubegm/ui_en.cpd"), &pack).unwrap();
+        let resource = deflated_zip::tests::sample(&[("game.raw", &sheet), (LOADING, &vec![1u8; LOADING_BYTES])]);
+        fs::write(sd.0.join("cubegm/resource.cpd"), &resource).unwrap();
+
+        assert!(list_backgrounds(&sd.0, &work).unwrap().iter().any(|b| b.name == PAUSE));
+        assert!(!background_preview(&sd.0, PAUSE).unwrap().is_empty());
+        // La pantalla de carga cambiada antes no se pierde al cambiar el menú.
+        replace_background(&sd.0, &work, LOADING, &picture).unwrap();
+        replace_background(&sd.0, &work, PAUSE, &picture).unwrap();
+
+        for file in ["ui_es.cpd", "ui_en.cpd"] {
+            let bytes = fs::read(sd.0.join("cubegm").join(file)).unwrap();
+            assert!(bytes.starts_with(b"WQW"), "{file} sigue camuflado");
+            let plain = deflated_zip::unmask(&bytes).unwrap();
+            let entries = deflated_zip::read_entries(&plain, file).unwrap();
+            for entry in &entries {
+                let data = deflated_zip::read_data(&plain, entry).unwrap();
+                let pieces = sheets::parse(&data, &entry.name).unwrap();
+                assert_eq!(&sheets::base_rgb(&data, &pieces)[..3], &[255, 0, 0]);
+            }
+        }
+        let bytes = fs::read(sd.0.join("cubegm/resource.cpd")).unwrap();
+        let entries = deflated_zip::read_entries(&bytes, "resource.cpd").unwrap();
+        let game = deflated_zip::read_data(&bytes, &entries[0]).unwrap();
+        assert_eq!(&sheets::base_rgb(&game, &sheets::parse(&game, "g").unwrap())[..3], &[255, 0, 0]);
+        assert_eq!(&deflated_zip::read_data(&bytes, &entries[1]).unwrap()[..2], &0xF800u16.to_le_bytes());
+
+        restore_background(&sd.0, &work, PAUSE).unwrap();
+        assert_eq!(fs::read(sd.0.join("cubegm/ui_es.cpd")).unwrap(), pack);
+        assert_eq!(fs::read(sd.0.join("cubegm/ui_en.cpd")).unwrap(), pack);
+        restore_background(&sd.0, &work, LOADING).unwrap();
+        assert_eq!(fs::read(sd.0.join("cubegm/resource.cpd")).unwrap(), resource);
+    }
+
+    #[test]
     fn sin_resource_cpd_no_ofrece_pantalla_de_carga() {
         let (sd, pc, _) = card("noloading");
         let list = list_backgrounds(&sd.0, &pc.0.to_string_lossy()).unwrap();
@@ -775,6 +840,17 @@ mod real_card {
         let mapping = std::env::var("BUNKO_REAL_MAPPING").unwrap();
         replace_background(&sd, &work, LOADING, Path::new(&loading)).unwrap();
         replace_background(&sd, &work, KEY_MAPPING, Path::new(&mapping)).unwrap();
+        // Los paquetes reales se descamuflan y vuelven a camuflar sin cambiar un byte.
+        for entry in fs::read_dir(sd.join("cubegm")).unwrap() {
+            let name = entry.unwrap().file_name().into_string().unwrap();
+            if name.starts_with("ui_") {
+                let bytes = fs::read(sd.join("cubegm").join(&name)).unwrap();
+                assert_eq!(deflated_zip::mask(&deflated_zip::unmask(&bytes).unwrap()).unwrap(), bytes, "{name}");
+            }
+        }
+        if let Ok(pause_image) = std::env::var("BUNKO_REAL_PAUSE") {
+            replace_background(&sd, &work, PAUSE, Path::new(&pause_image)).unwrap();
+        }
         if let Ok(list_image) = std::env::var("BUNKO_REAL_LIST") {
             replace_background(&sd, &work, GAME_LIST, Path::new(&list_image)).unwrap();
             replace_background(&sd, &work, SEARCH, Path::new(&list_image)).unwrap();

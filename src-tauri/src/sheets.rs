@@ -14,6 +14,18 @@
 const SCREEN_WIDTH: usize = 640;
 const SCREEN_HEIGHT: usize = 480;
 
+/// Zona de la interfaz pintada en el propio fondo (teclado, textos del menú,
+/// barra inferior). Dentro de ella se conserva lo que en el fondo original
+/// supera el brillo `from` (0 = todo); lo más oscuro deja ver el fondo nuevo.
+#[derive(Clone, Copy, Debug)]
+pub struct Keep {
+    pub x0: usize,
+    pub y0: usize,
+    pub x1: usize,
+    pub y1: usize,
+    pub from: i32,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Piece {
     pub x0: usize,
@@ -107,40 +119,66 @@ fn max_diff(a: [i32; 3], b: [i32; 3]) -> i32 {
     (0..3).map(|c| (a[c] - b[c]).abs()).max().unwrap_or(0)
 }
 
-/// Rehace la hoja con `new_base` (RGB 640×480) como fondo.
-///
-/// `keep` son zonas de la interfaz dibujadas en el propio fondo (el teclado y
-/// la barra del buscador): dentro de ellas se conserva lo claro del fondo
-/// original, que es la interfaz, y lo oscuro deja ver el fondo nuevo.
-pub fn rebuild(data: &[u8], pieces: &[Piece], new_base: &[u8], keep: &[(usize, usize, usize, usize)]) -> Vec<u8> {
+/// Rehace la hoja con `new_base` (RGB 640×480) como fondo, conservando de
+/// `keep` la interfaz pintada en el fondo original.
+pub fn rebuild(data: &[u8], pieces: &[Piece], new_base: &[u8], keep: &[Keep]) -> Vec<u8> {
     let old = base_rgb(data, pieces);
-    let mut base: Vec<[i32; 3]> = (0..SCREEN_WIDTH * SCREEN_HEIGHT)
+    let fresh: Vec<[i32; 3]> = (0..SCREEN_WIDTH * SCREEN_HEIGHT)
         .map(|i| [new_base[i * 3] as i32, new_base[i * 3 + 1] as i32, new_base[i * 3 + 2] as i32])
         .collect();
-    for &(x0, y0, x1, y1) in keep {
-        for y in y0..y1.min(SCREEN_HEIGHT) {
-            for x in x0..x1.min(SCREEN_WIDTH) {
+    let mut base = fresh.clone();
+    // Píxeles donde se conservó interfaz clara del fondo original (textos, teclas).
+    let mut kept_light = vec![false; SCREEN_WIDTH * SCREEN_HEIGHT];
+    for zone in keep {
+        for y in zone.y0..zone.y1.min(SCREEN_HEIGHT) {
+            for x in zone.x0..zone.x1.min(SCREEN_WIDTH) {
                 let ui = rgb_at(&old, x, y);
                 let light = *ui.iter().max().unwrap();
-                let w = (light - 55).clamp(0, 25);
+                let w = if zone.from == 0 { 25 } else { (light - zone.from).clamp(0, 25) };
+                if zone.from != 0 && w > 0 {
+                    kept_light[y * SCREEN_WIDTH + x] = true;
+                }
                 let cell = &mut base[y * SCREEN_WIDTH + x];
                 *cell = [0, 1, 2].map(|c| (ui[c] * w + cell[c] * (25 - w)) / 25);
             }
         }
     }
 
+    // Se amplía 2 px para cubrir el borde suavizado de los textos.
+    let near_ui: Vec<bool> = (0..SCREEN_WIDTH * SCREEN_HEIGHT)
+        .map(|i| {
+            let (x, y) = ((i % SCREEN_WIDTH) as i64, (i / SCREEN_WIDTH) as i64);
+            (-2..=2).any(|dy| {
+                (-2..=2).any(|dx| {
+                    let (nx, ny) = (x + dx, y + dy);
+                    (0..SCREEN_WIDTH as i64).contains(&nx)
+                        && (0..SCREEN_HEIGHT as i64).contains(&ny)
+                        && kept_light[ny as usize * SCREEN_WIDTH + nx as usize]
+                })
+            })
+        })
+        .collect();
+
     let mut out = data[..pieces[0].offset].to_vec();
     for p in &base {
         out.extend(encode(*p));
     }
     for piece in &pieces[1..] {
+        // Otra pantalla completa (como «Buscar trucos») no lleva necesariamente
+        // la interfaz del fondo principal.
+        let full_screen = piece.x0 == 0 && piece.y0 == 0 && piece.x1 == SCREEN_WIDTH && piece.y1 == SCREEN_HEIGHT;
         for y in piece.y0..piece.y1 {
             for x in piece.x0..piece.x1 {
                 let own = pixel(data, piece, x - piece.x0, y - piece.y0);
                 let before = rgb_at(&old, x, y);
                 let now = base[y * SCREEN_WIDTH + x];
                 let diff = max_diff(own, before);
-                let mixed = if diff < 6 {
+                let lacks_ui = full_screen
+                    && near_ui[y * SCREEN_WIDTH + x]
+                    && own.iter().max().unwrap() + 12 < *before.iter().max().unwrap();
+                let mixed = if lacks_ui {
+                    fresh[y * SCREEN_WIDTH + x]
+                } else if diff < 6 {
                     now
                 } else {
                     // 0 = translúcido (se traslada la diferencia); 60 = opaco.
@@ -220,7 +258,7 @@ pub(crate) mod tests {
         let data = sample();
         let pieces = parse(&data, "x").unwrap();
         let black = vec![0u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3];
-        let out = rebuild(&data, &pieces, &black, &[(0, 0, 5, 5)]);
+        let out = rebuild(&data, &pieces, &black, &[Keep { x0: 0, y0: 0, x1: 5, y1: 5, from: 55 }]);
         let base = pieces[0];
         // Dentro de la zona: el gris original (más claro que 55) se mantiene.
         assert!(max_diff(pixel(&out, &base, 2, 2), [96, 96, 96]) <= 8);

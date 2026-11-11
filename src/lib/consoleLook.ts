@@ -21,12 +21,14 @@ type BackgroundGroup = "Menú" | "Sistemas" | "Multimedia" | "Ajustes";
 
 /**
  * Qué pantalla de CubeGM usa cada fondo de `UI_Res.cpd`. `load_bg`, `menu` y
- * `search` vienen de `resource.cpd`; `KeyMap_Key` es la tira de teclas resaltadas.
+ * `search` vienen de `resource.cpd`; `KeyMap_Key` es la tira de teclas resaltadas;
+ * `pause` es el menú de pausa de los paquetes de idioma `ui_xx.cpd`.
  */
 const BACKGROUNDS: Record<string, { label: string; group: BackgroundGroup }> = {
   load_bg: { label: "Pantalla de carga", group: "Menú" },
   menu: { label: "Lista de juegos", group: "Menú" },
   search: { label: "Buscador", group: "Menú" },
+  pause: { label: "Menú de pausa", group: "Menú" },
   AllEMU: { label: "Todos los juegos", group: "Menú" },
   FAVORITE: { label: "Favoritos", group: "Menú" },
   HISTORY: { label: "Recientes", group: "Menú" },

@@ -40,9 +40,12 @@ test("la pantalla de carga va primero en Menú y las teclas resaltadas tras el m
   assert.equal(backgroundInfo("load_bg.raw").label, "Pantalla de carga");
   assert.deepEqual(backgroundInfo("search.raw"), { label: "Buscador", group: "Menú" });
   assert.deepEqual(
-    groupBackgrounds([{ name: "search.raw" }, { name: "menu.raw" }, { name: "load_bg.raw" }])[0].items.map((i) => i.name),
-    ["load_bg.raw", "menu.raw", "search.raw"],
+    groupBackgrounds([{ name: "pause.raw" }, { name: "search.raw" }, { name: "menu.raw" }, { name: "load_bg.raw" }])[0].items.map(
+      (i) => i.name,
+    ),
+    ["load_bg.raw", "menu.raw", "search.raw", "pause.raw"],
   );
+  assert.deepEqual(backgroundInfo("pause.raw"), { label: "Menú de pausa", group: "Menú" });
 });
 
 test("cambiar el mapa de teclas refresca también las teclas resaltadas", () => {

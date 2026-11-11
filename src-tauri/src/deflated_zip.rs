@@ -153,6 +153,61 @@ pub fn replace(bytes: &[u8], entries: &[ZipEntry], name: &str, data: &[u8]) -> R
     Ok(out)
 }
 
+/// Clave con la que los paquetes de idioma (`ui_xx.cpd`) cifran los nombres.
+const NAME_KEY: u8 = 0xE5;
+/// Firmas de los paquetes de idioma: `WQW` y un número en lugar de `PK` y dos.
+const MASKED: [(&[u8; 4], &[u8; 4]); 3] = [
+    (b"WQW", b"PK"),
+    (b"WQW", b"PK"),
+    (b"WQW", b"PK"),
+];
+
+/// Cambia firmas y nombres de un ZIP entre la forma camuflada y la normal,
+/// recorriendo su estructura (nunca buscando bytes a ciegas).
+fn convert(bytes: &[u8], to_plain: bool) -> Option<Vec<u8>> {
+    let sig = |i: usize| if to_plain { (MASKED[i].0, MASKED[i].1) } else { (MASKED[i].1, MASKED[i].0) };
+    let last = bytes.len().checked_sub(22)?;
+    let end = (0..=last).rev().find(|&i| bytes[i..].starts_with(sig(2).0))?;
+    let mut out = bytes.to_vec();
+    out[end..end + 4].copy_from_slice(sig(2).1);
+    let count = u16_at(bytes, end + 10) as usize;
+    let mut pos = u32_at(bytes, end + 16) as usize;
+    for _ in 0..count {
+        if pos + 46 > bytes.len() || !bytes[pos..].starts_with(sig(1).0) {
+            return None;
+        }
+        out[pos..pos + 4].copy_from_slice(sig(1).1);
+        let name_len = u16_at(bytes, pos + 28) as usize;
+        let local = u32_at(bytes, pos + 42) as usize;
+        if local + 30 > bytes.len() || !bytes[local..].starts_with(sig(0).0) {
+            return None;
+        }
+        out[local..local + 4].copy_from_slice(sig(0).1);
+        let local_name = u16_at(bytes, local + 26) as usize;
+        if pos + 46 + name_len > bytes.len() || local + 30 + local_name > bytes.len() {
+            return None;
+        }
+        for i in pos + 46..pos + 46 + name_len {
+            out[i] ^= NAME_KEY;
+        }
+        for i in local + 30..local + 30 + local_name {
+            out[i] ^= NAME_KEY;
+        }
+        pos += 46 + name_len + u16_at(bytes, pos + 30) as usize + u16_at(bytes, pos + 32) as usize;
+    }
+    Some(out)
+}
+
+/// ZIP normal a partir de un paquete de idioma camuflado, o `None` si no lo es.
+pub fn unmask(bytes: &[u8]) -> Option<Vec<u8>> {
+    convert(bytes, true)
+}
+
+/// Vuelve a camuflar un ZIP normal como los paquetes de idioma.
+pub fn mask(bytes: &[u8]) -> Result<Vec<u8>, String> {
+    convert(bytes, false).ok_or_else(|| "No se pudo preparar el paquete de idioma".to_string())
+}
+
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
@@ -228,5 +283,16 @@ pub(crate) mod tests {
     #[test]
     fn rechaza_archivos_que_no_son_zip() {
         assert!(read_entries(b"no es un zip, solo texto suelto de prueba", "x").is_err());
+    }
+
+    #[test]
+    fn camufla_y_descamufla_como_los_paquetes_de_idioma() {
+        let zip = sample(&[("game.raw", &[7u8; 900]), ("game_1.raw", &[8u8; 50])]);
+        let masked = mask(&zip).unwrap();
+        assert!(masked.starts_with(b"WQW"));
+        assert!(!masked.windows(8).any(|w| w == b"game.raw"), "los nombres van cifrados");
+        assert!(masked[masked.len() - 22..].starts_with(b"WQW"));
+        assert_eq!(unmask(&masked).unwrap(), zip);
+        assert!(unmask(&zip).is_none(), "un ZIP normal no es un paquete camuflado");
     }
 }

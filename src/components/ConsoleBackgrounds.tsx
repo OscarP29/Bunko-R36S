@@ -67,6 +67,11 @@ export function ConsoleBackgrounds({ enabled, cardId, workDir, disabledReason }:
             sobre el fondo nuevo. Si prefieres las tuyas, súbelas después como
             una tira de 66 × 492 con los botones X, Y, R1, A, B y L1.
           </p>
+          <p className="settings-intro">
+            El menú de pausa cambia en todos los idiomas a la vez y conserva
+            sus textos claros encima de tu imagen: elige una con la parte
+            izquierda oscura para que se lean bien.
+          </p>
 
           {backgrounds.items === null ? (
             <p className="settings-note">Leyendo los fondos…</p>

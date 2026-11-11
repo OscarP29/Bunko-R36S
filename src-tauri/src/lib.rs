@@ -13,6 +13,7 @@ mod backgrounds;
 mod deflated_zip;
 mod logos;
 mod look;
+mod pause_menu;
 mod saves;
 mod sheets;
 
