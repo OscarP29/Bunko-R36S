@@ -44,7 +44,7 @@
 
 ### 🎨 Personaliza la consola (R36SX con CubeGM)
 - Cambia la música de fondo y los efectos de sonido.
-- Cambia los fondos de los menús y sistemas, y los logos de arranque y apagado.
+- Cambia los fondos de los menús y sistemas, la pantalla de carga y los logos de arranque y apagado.
 - Antes del primer cambio se guarda el original, y puedes restaurarlo cuando quieras.
 
 ### 📝 Lista de pendientes

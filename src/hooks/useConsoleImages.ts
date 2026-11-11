@@ -16,6 +16,8 @@ type ConsoleImagesOptions<T extends ConsoleImage> = {
   replace: (workDir: string, key: string, sourcePath: string) => Promise<void>;
   restore: (workDir: string, key: string) => Promise<void>;
   messages: { replaced: string; restored: string };
+  /** Otras imágenes que cambian a la vez que `key` y necesitan nueva vista previa. */
+  linked?: (key: string) => string[];
 };
 
 /** Imágenes de la consola (fondos, logos): vista previa, cambiar y volver al original. */
@@ -85,7 +87,7 @@ export function useConsoleImages<T extends ConsoleImage>(options: ConsoleImagesO
     try {
       await task();
       setResult({ ok: true, text: done });
-      await loadPreview(key);
+      for (const changed of [key, ...(options.linked?.(key) ?? [])]) await loadPreview(changed);
     } catch (e) {
       setResult({ ok: false, text: String(e) });
     } finally {

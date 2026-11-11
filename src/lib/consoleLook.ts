@@ -19,8 +19,12 @@ export const isMusicSlot = (file: string) => file.toLowerCase().endsWith(".mp3")
 
 type BackgroundGroup = "Menú" | "Sistemas" | "Multimedia" | "Ajustes";
 
-/** Qué pantalla de CubeGM usa cada fondo de `UI_Res.cpd`. */
+/**
+ * Qué pantalla de CubeGM usa cada fondo de `UI_Res.cpd`. `load_bg` viene de
+ * `resource.cpd` y `KeyMap_Key` es la tira de teclas resaltadas.
+ */
 const BACKGROUNDS: Record<string, { label: string; group: BackgroundGroup }> = {
+  load_bg: { label: "Pantalla de carga", group: "Menú" },
   AllEMU: { label: "Todos los juegos", group: "Menú" },
   FAVORITE: { label: "Favoritos", group: "Menú" },
   HISTORY: { label: "Recientes", group: "Menú" },
@@ -49,6 +53,7 @@ const BACKGROUNDS: Record<string, { label: string; group: BackgroundGroup }> = {
   SetLanguage: { label: "Idioma", group: "Ajustes" },
   SetKeyMap: { label: "Asignar teclas", group: "Ajustes" },
   KeyMapping: { label: "Mapa de teclas", group: "Ajustes" },
+  KeyMap_Key: { label: "Teclas resaltadas", group: "Ajustes" },
   SetFacRest: { label: "Restablecer", group: "Ajustes" },
 };
 
@@ -58,6 +63,9 @@ export function backgroundInfo(name: string) {
   const stem = name.replace(/\.raw$/i, "");
   return BACKGROUNDS[stem] ?? { label: stem, group: "Ajustes" as BackgroundGroup };
 }
+
+/** Fondos cuya vista previa cambia también al cambiar o restaurar `name`. */
+export const linkedBackgrounds = (name: string) => (name === "KeyMapping.raw" ? ["KeyMap_Key.raw"] : []);
 
 /** Agrupa los fondos en el orden del menú, conservando el del archivo dentro de cada grupo. */
 export function groupBackgrounds<T extends { name: string }>(items: T[]) {

@@ -6,3 +6,7 @@ src-tauri/target
 # Originales del logo; en el repo van las versiones optimizadas
 src-tauri/icons/Bunko-logo-cuadrado.png
 src-tauri/icons/bunko-letras.png
+
+# Copias del sistema de la consola (solo para pruebas locales)
+/cubegm/
+/R36SX V2.7 Minimal Backup/

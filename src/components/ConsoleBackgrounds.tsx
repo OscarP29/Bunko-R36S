@@ -8,7 +8,7 @@ import {
   replaceConsoleBackground,
   restoreConsoleBackground,
 } from "../lib/backend.ts";
-import { backgroundInfo, groupBackgrounds } from "../lib/consoleLook.ts";
+import { backgroundInfo, groupBackgrounds, linkedBackgrounds } from "../lib/consoleLook.ts";
 
 type ConsoleBackgroundsProps = {
   enabled: boolean;
@@ -31,6 +31,7 @@ export function ConsoleBackgrounds({ enabled, cardId, workDir, disabledReason }:
     replace: replaceConsoleBackground,
     restore: restoreConsoleBackground,
     messages: { replaced: "Fondo cambiado en la consola", restored: "Fondo original restaurado" },
+    linked: linkedBackgrounds,
   });
 
   async function change(name: string, label: string) {
@@ -55,6 +56,11 @@ export function ConsoleBackgrounds({ enabled, cardId, workDir, disabledReason }:
             fondo, también el nombre del sistema y el botón «A Enter» que llevan
             dibujados los originales. El original se guarda en la carpeta de
             trabajo para poder restaurarlo.
+          </p>
+          <p className="settings-intro">
+            Al cambiar el mapa de teclas, Bunko rehace las teclas resaltadas
+            sobre el fondo nuevo. Si prefieres las tuyas, súbelas después como
+            una tira de 66 × 492 con los botones X, Y, R1, A, B y L1.
           </p>
 
           {backgrounds.items === null ? (

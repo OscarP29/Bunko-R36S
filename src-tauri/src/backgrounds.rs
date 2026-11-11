@@ -5,8 +5,17 @@
 //! el fondo de cada sistema y de cada pantalla de ajustes. Bunko lo reescribe
 //! con la misma estructura que el original (entradas guardadas, sin campos
 //! extra) y guarda antes una copia completa para poder restaurar cada fondo.
+//!
+//! Además de los fondos de pantalla completa:
+//! - `KeyMap_Key.raw` (66×492 BGRA): seis recortes de 66×82 que la consola
+//!   pega sobre `KeyMapping.raw` para resaltar el botón elegido. Llevan dentro
+//!   el fondo original, así que al cambiar `KeyMapping` Bunko los rehace sobre
+//!   el fondo nuevo, conservando solo el botón resaltado.
+//! - `load_bg.raw` de `cubegm/resource.cpd`: la pantalla «Loading…», 640×480
+//!   en RGB565. Ese `.cpd` sí va comprimido; ver [`crate::deflated_zip`].
 
-use crate::look::{originals_folder, read_originals, write_originals, CUBEGM_DIR};
+use crate::deflated_zip;
+use crate::look::{originals_folder, read_originals, write_originals, Originals, CUBEGM_DIR};
 use crate::write_atomic;
 use image::{codecs::jpeg::JpegEncoder, imageops::FilterType, DynamicImage, RgbImage, RgbaImage};
 use serde::Serialize;
@@ -18,6 +27,21 @@ pub const SCREEN_HEIGHT: u32 = 480;
 const SCREEN_BYTES: usize = (SCREEN_WIDTH * SCREEN_HEIGHT * 4) as usize;
 const THUMB_WIDTH: u32 = 320;
 const THUMB_HEIGHT: u32 = 240;
+
+const RESOURCE_FILE: &str = "resource.cpd";
+/// Pantalla de carga, dentro de `resource.cpd`.
+pub const LOADING: &str = "load_bg.raw";
+const LOADING_BYTES: usize = (SCREEN_WIDTH * SCREEN_HEIGHT * 2) as usize;
+
+const KEY_MAPPING: &str = "KeyMapping.raw";
+const KEY_TILES: &str = "KeyMap_Key.raw";
+const TILE_WIDTH: u32 = 66;
+const TILE_HEIGHT: u32 = 82;
+/// Esquina de cada recorte sobre `KeyMapping`, en el orden de la tira
+/// (X, Y, R1, A, B, L1). Medido sobre el original del firmware.
+const TILE_SPOTS: [(u32, u32); 6] = [(400, 296), (368, 336), (427, 192), (440, 336), (400, 368), (176, 192)];
+const TILES_HEIGHT: u32 = TILE_HEIGHT * TILE_SPOTS.len() as u32;
+const TILES_BYTES: usize = (TILE_WIDTH * TILES_HEIGHT * 4) as usize;
 
 #[derive(Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -151,11 +175,35 @@ fn is_screen(entry: &Entry) -> bool {
     entry.data.len() == SCREEN_BYTES && entry.name.to_ascii_lowercase().ends_with(".raw")
 }
 
+/// Fondos de pantalla completa y la tira de teclas resaltadas.
+fn is_editable(entry: &Entry) -> bool {
+    is_screen(entry) || (entry.name == KEY_TILES && entry.data.len() == TILES_BYTES)
+}
+
 fn find_screen<'a>(entries: &'a [Entry], name: &str) -> Result<&'a Entry, String> {
     entries
         .iter()
-        .find(|entry| entry.name == name && is_screen(entry))
+        .find(|entry| entry.name == name && is_editable(entry))
         .ok_or_else(|| format!("La consola no tiene el fondo {name}"))
+}
+
+fn resource_path(root: &Path) -> std::path::PathBuf {
+    root.join(CUBEGM_DIR).join(RESOURCE_FILE)
+}
+
+/// `resource.cpd` y sus entradas, si tiene una pantalla de carga válida.
+fn read_resource(root: &Path) -> Result<(Vec<u8>, Vec<deflated_zip::ZipEntry>), String> {
+    let bytes = fs::read(resource_path(root)).map_err(|_| "No se encontró cubegm/resource.cpd en la tarjeta".to_string())?;
+    let entries = deflated_zip::read_entries(&bytes, RESOURCE_FILE)?;
+    find_loading(&entries)?;
+    Ok((bytes, entries))
+}
+
+fn find_loading(entries: &[deflated_zip::ZipEntry]) -> Result<&deflated_zip::ZipEntry, String> {
+    entries
+        .iter()
+        .find(|entry| entry.name == LOADING && entry.size == LOADING_BYTES)
+        .ok_or_else(|| "Esta consola no tiene pantalla de carga que se pueda cambiar".to_string())
 }
 
 pub fn list_backgrounds(root: &Path, work_dir: &str) -> Result<Vec<Background>, String> {
@@ -163,29 +211,75 @@ pub fn list_backgrounds(root: &Path, work_dir: &str) -> Result<Vec<Background>, 
         Ok((folder, card_id)) => read_originals(&folder, &card_id).backgrounds,
         Err(_) => Vec::new(),
     };
-    Ok(read_entries(&read_ui(root)?)?
+    let mut list: Vec<Background> = read_entries(&read_ui(root)?)?
         .iter()
-        .filter(|entry| is_screen(entry))
+        .filter(|entry| is_editable(entry))
         .map(|entry| Background { customized: customized.contains(&entry.name), name: entry.name.clone() })
-        .collect())
+        .collect();
+    if read_resource(root).is_ok() {
+        list.push(Background { customized: customized.iter().any(|name| name == LOADING), name: LOADING.into() });
+    }
+    Ok(list)
 }
 
-fn bgra_to_image(raw: &[u8]) -> RgbImage {
+fn bgra_to_image(raw: &[u8], width: u32, height: u32) -> RgbImage {
     let pixels = raw.chunks_exact(4).flat_map(|p| [p[2], p[1], p[0]]).collect();
+    RgbImage::from_raw(width, height, pixels).expect("tamaño de la imagen")
+}
+
+/// RGB565 en little-endian (rojo en los bits altos), como `resource.cpd`.
+fn rgb565_to_image(raw: &[u8]) -> RgbImage {
+    let pixels = raw
+        .chunks_exact(2)
+        .flat_map(|p| {
+            let v = u16::from_le_bytes([p[0], p[1]]);
+            let (r, g, b) = ((v >> 11) & 31, (v >> 5) & 63, v & 31);
+            [(r * 255 / 31) as u8, (g * 255 / 63) as u8, (b * 255 / 31) as u8]
+        })
+        .collect();
     RgbImage::from_raw(SCREEN_WIDTH, SCREEN_HEIGHT, pixels).expect("tamaño de pantalla")
+}
+
+/// Ajusta la imagen a 640×480 (recortando para llenar) y la pasa a RGB565.
+pub fn image_to_rgb565(image: &DynamicImage) -> Vec<u8> {
+    fit_bgra(image, SCREEN_WIDTH, SCREEN_HEIGHT, false, 255)
+        .chunks_exact(4)
+        .flat_map(|p| {
+            let (b, g, r) = (p[0] as u16, p[1] as u16, p[2] as u16);
+            (((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)).to_le_bytes()
+        })
+        .collect()
+}
+
+/// Los seis recortes de la tira, uno al lado del otro, para la vista previa.
+fn tiles_side_by_side(raw: &[u8]) -> RgbImage {
+    let strip = bgra_to_image(raw, TILE_WIDTH, TILES_HEIGHT);
+    let mut row = RgbImage::new(TILE_WIDTH * TILE_SPOTS.len() as u32, TILE_HEIGHT);
+    for i in 0..TILE_SPOTS.len() as u32 {
+        let tile = image::imageops::crop_imm(&strip, 0, i * TILE_HEIGHT, TILE_WIDTH, TILE_HEIGHT).to_image();
+        image::imageops::replace(&mut row, &tile, (i * TILE_WIDTH) as i64, 0);
+    }
+    row
 }
 
 /// Miniatura JPEG de 320×240 para la vista previa.
 pub fn background_preview(root: &Path, name: &str) -> Result<Vec<u8>, String> {
-    let ui = read_ui(root)?;
-    let entries = read_entries(&ui)?;
-    let entry = find_screen(&entries, name)?;
-    let thumb = image::imageops::resize(
-        &bgra_to_image(&ui[entry.data.clone()]),
-        THUMB_WIDTH,
-        THUMB_HEIGHT,
-        FilterType::Triangle,
-    );
+    let full = if name == LOADING {
+        let (bytes, entries) = read_resource(root)?;
+        rgb565_to_image(&deflated_zip::read_data(&bytes, find_loading(&entries)?)?)
+    } else {
+        let ui = read_ui(root)?;
+        let entries = read_entries(&ui)?;
+        let entry = find_screen(&entries, name)?;
+        if name == KEY_TILES {
+            let row = DynamicImage::ImageRgb8(tiles_side_by_side(&ui[entry.data.clone()]));
+            let raw = fit_bgra(&row, THUMB_WIDTH, THUMB_HEIGHT, true, 255);
+            bgra_to_image(&raw, THUMB_WIDTH, THUMB_HEIGHT)
+        } else {
+            bgra_to_image(&ui[entry.data.clone()], SCREEN_WIDTH, SCREEN_HEIGHT)
+        }
+    };
+    let thumb = image::imageops::resize(&full, THUMB_WIDTH, THUMB_HEIGHT, FilterType::Triangle);
     let mut jpeg = Vec::new();
     JpegEncoder::new_with_quality(&mut jpeg, 82)
         .encode_image(&thumb)
@@ -223,11 +317,17 @@ pub fn fit_bgra(image: &DynamicImage, width: u32, height: u32, contain: bool, al
         .collect()
 }
 
-/// Reescribe `UI_Res.cpd` cambiando solo la entrada `name`.
-fn rewrite_ui(root: &Path, ui: &[u8], entries: &[Entry], name: &str, data: &[u8]) -> Result<(), String> {
+/// Reescribe `UI_Res.cpd` cambiando solo las entradas de `changes`.
+fn rewrite_ui(root: &Path, ui: &[u8], entries: &[Entry], changes: &[(&str, Vec<u8>)]) -> Result<(), String> {
     let parts: Vec<(&Entry, &[u8])> = entries
         .iter()
-        .map(|entry| (entry, if entry.name == name { data } else { &ui[entry.data.clone()] }))
+        .map(|entry| {
+            let data = changes
+                .iter()
+                .find(|(name, _)| *name == entry.name)
+                .map_or(&ui[entry.data.clone()], |(_, data)| data.as_slice());
+            (entry, data)
+        })
         .collect();
     let rebuilt = write_entries(&parts);
     // Comprobación de seguridad antes de tocar la tarjeta.
@@ -238,23 +338,85 @@ fn rewrite_ui(root: &Path, ui: &[u8], entries: &[Entry], name: &str, data: &[u8]
     write_atomic(&ui_path(root), &rebuilt)
 }
 
+/// Guarda una copia del archivo original de la tarjeta antes del primer cambio.
+fn keep_original(folder: &Path, originals: &mut Originals, file: &str, bytes: &[u8]) -> Result<(), String> {
+    if !originals.files.contains_key(file) {
+        fs::create_dir_all(folder).map_err(|e| format!("No se pudo crear la carpeta de originales: {e}"))?;
+        fs::write(folder.join(file), bytes).map_err(|e| format!("No se pudo guardar el original de {file}: {e}"))?;
+        originals.files.insert(file.to_string(), true);
+    }
+    Ok(())
+}
+
+fn mark_customized(originals: &mut Originals, name: &str) {
+    if !originals.backgrounds.iter().any(|item| item == name) {
+        originals.backgrounds.push(name.to_string());
+    }
+}
+
+/// Rehace la tira de teclas resaltadas sobre un `KeyMapping` nuevo.
+///
+/// De cada recorte original se conserva solo el botón resaltado, que es lo
+/// único naranja (rojo claramente mayor que azul; el fondo es gris o azulado);
+/// el resto se toma del fondo nuevo. La mezcla es gradual para que el borde
+/// del botón no quede dentado.
+fn rebuild_key_tiles(original_ui: &[u8], new_mapping: &[u8]) -> Result<Option<Vec<u8>>, String> {
+    let entries = read_entries(original_ui)?;
+    let Some(tiles) = entries.iter().find(|entry| entry.name == KEY_TILES && entry.data.len() == TILES_BYTES) else {
+        return Ok(None);
+    };
+    let old_tiles = &original_ui[tiles.data.clone()];
+    let mut out = vec![0u8; TILES_BYTES];
+    for (i, &(sx, sy)) in TILE_SPOTS.iter().enumerate() {
+        for y in 0..TILE_HEIGHT {
+            for x in 0..TILE_WIDTH {
+                let tile = ((i as u32 * TILE_HEIGHT + y) * TILE_WIDTH + x) as usize * 4;
+                let screen = ((sy + y) * SCREEN_WIDTH + sx + x) as usize * 4;
+                // BGRA: rojo en [2], azul en [0].
+                let orange = (old_tiles[tile + 2] as u32).saturating_sub(old_tiles[tile] as u32);
+                // 0 = fondo; 255 = botón resaltado.
+                let weight = orange.saturating_sub(16).min(48) * 255 / 48;
+                for c in 0..3 {
+                    let highlight = old_tiles[tile + c] as u32;
+                    let background = new_mapping[screen + c] as u32;
+                    out[tile + c] = ((highlight * weight + background * (255 - weight) + 127) / 255) as u8;
+                }
+                out[tile + 3] = 255;
+            }
+        }
+    }
+    Ok(Some(out))
+}
+
 pub fn replace_background(root: &Path, work_dir: &str, name: &str, source: &Path) -> Result<(), String> {
     let image = image::open(source).map_err(|_| "No se pudo leer esa imagen; usa PNG, JPG o WebP".to_string())?;
-    let data = image_to_bgra(&image);
+    if name == LOADING {
+        return replace_loading(root, work_dir, &image);
+    }
+    let data = if name == KEY_TILES {
+        fit_bgra(&image, TILE_WIDTH, TILES_HEIGHT, false, 255)
+    } else {
+        image_to_bgra(&image)
+    };
     let ui = read_ui(root)?;
     let entries = read_entries(&ui)?;
     find_screen(&entries, name)?;
 
     let (folder, card_id) = originals_folder(root, work_dir)?;
     let mut originals = read_originals(&folder, &card_id);
-    if !originals.files.contains_key(UI_FILE) {
-        fs::create_dir_all(&folder).map_err(|e| format!("No se pudo crear la carpeta de originales: {e}"))?;
-        fs::write(folder.join(UI_FILE), &ui).map_err(|e| format!("No se pudo guardar el original de UI_Res.cpd: {e}"))?;
-        originals.files.insert(UI_FILE.to_string(), true);
+    keep_original(&folder, &mut originals, UI_FILE, &ui)?;
+
+    let mut changes: Vec<(&str, Vec<u8>)> = Vec::new();
+    if name == KEY_MAPPING && find_screen(&entries, KEY_TILES).is_ok() {
+        let original = fs::read(folder.join(UI_FILE)).map_err(|e| format!("No se encontró el UI_Res.cpd original: {e}"))?;
+        if let Some(tiles) = rebuild_key_tiles(&original, &data)? {
+            changes.push((KEY_TILES, tiles));
+        }
     }
-    rewrite_ui(root, &ui, &entries, name, &data)?;
-    if !originals.backgrounds.iter().any(|item| item == name) {
-        originals.backgrounds.push(name.to_string());
+    changes.insert(0, (name, data));
+    rewrite_ui(root, &ui, &entries, &changes)?;
+    for (changed, _) in &changes {
+        mark_customized(&mut originals, changed);
     }
     write_originals(&folder, &originals)
 }
@@ -265,15 +427,49 @@ pub fn restore_background(root: &Path, work_dir: &str, name: &str) -> Result<(),
     if !originals.backgrounds.iter().any(|item| item == name) {
         return Err(format!("{name} ya es el original"));
     }
+    if name == LOADING {
+        return restore_loading(root, &folder, &mut originals);
+    }
     let original = fs::read(folder.join(UI_FILE)).map_err(|e| format!("No se encontró el UI_Res.cpd original: {e}"))?;
     let original_entries = read_entries(&original)?;
-    let data = original[find_screen(&original_entries, name)?.data.clone()].to_vec();
+    let mut names = vec![name];
+    // Las teclas resaltadas se rehicieron con el KeyMapping: vuelven con él.
+    if name == KEY_MAPPING && originals.backgrounds.iter().any(|item| item == KEY_TILES) {
+        names.push(KEY_TILES);
+    }
     let ui = read_ui(root)?;
     let entries = read_entries(&ui)?;
-    find_screen(&entries, name)?;
-    rewrite_ui(root, &ui, &entries, name, &data)?;
-    originals.backgrounds.retain(|item| item != name);
+    let mut changes = Vec::new();
+    for item in &names {
+        find_screen(&entries, item)?;
+        changes.push((*item, original[find_screen(&original_entries, item)?.data.clone()].to_vec()));
+    }
+    rewrite_ui(root, &ui, &entries, &changes)?;
+    originals.backgrounds.retain(|item| !names.contains(&item.as_str()));
     write_originals(&folder, &originals)
+}
+
+fn replace_loading(root: &Path, work_dir: &str, image: &DynamicImage) -> Result<(), String> {
+    let (bytes, entries) = read_resource(root)?;
+    let (folder, card_id) = originals_folder(root, work_dir)?;
+    let mut originals = read_originals(&folder, &card_id);
+    keep_original(&folder, &mut originals, RESOURCE_FILE, &bytes)?;
+    let rebuilt = deflated_zip::replace(&bytes, &entries, LOADING, &image_to_rgb565(image))?;
+    write_atomic(&resource_path(root), &rebuilt)?;
+    mark_customized(&mut originals, LOADING);
+    write_originals(&folder, &originals)
+}
+
+fn restore_loading(root: &Path, folder: &Path, originals: &mut Originals) -> Result<(), String> {
+    let original = fs::read(folder.join(RESOURCE_FILE))
+        .map_err(|e| format!("No se encontró el resource.cpd original: {e}"))?;
+    let original_entries = deflated_zip::read_entries(&original, RESOURCE_FILE)?;
+    let data = deflated_zip::read_data(&original, find_loading(&original_entries)?)?;
+    let (bytes, entries) = read_resource(root)?;
+    let rebuilt = deflated_zip::replace(&bytes, &entries, LOADING, &data)?;
+    write_atomic(&resource_path(root), &rebuilt)?;
+    originals.backgrounds.retain(|item| item != LOADING);
+    write_originals(folder, originals)
 }
 
 #[cfg(test)]
@@ -384,6 +580,91 @@ mod tests {
     }
 
     #[test]
+    fn cambia_y_restaura_la_pantalla_de_carga_de_resource_cpd() {
+        let (sd, pc, picture) = card("loading");
+        let work = pc.0.to_string_lossy().to_string();
+        let resource = deflated_zip::tests::sample(&[
+            ("game.raw", &[5u8; 1000]),
+            (LOADING, &vec![0x42u8; LOADING_BYTES]),
+            ("ui.cfg", b"[Setting]"),
+        ]);
+        fs::write(sd.0.join("cubegm/resource.cpd"), &resource).unwrap();
+
+        let list = list_backgrounds(&sd.0, &work).unwrap();
+        assert_eq!(list.last().unwrap().name, LOADING);
+        assert!(!background_preview(&sd.0, LOADING).unwrap().is_empty());
+
+        replace_background(&sd.0, &work, LOADING, &picture).unwrap();
+        let bytes = fs::read(sd.0.join("cubegm/resource.cpd")).unwrap();
+        let entries = deflated_zip::read_entries(&bytes, "resource.cpd").unwrap();
+        let data = deflated_zip::read_data(&bytes, &entries[1]).unwrap();
+        assert_eq!(&data[..2], &0xF800u16.to_le_bytes(), "rojo puro en RGB565");
+        assert_eq!(deflated_zip::read_data(&bytes, &entries[0]).unwrap(), vec![5u8; 1000]);
+        assert!(list_backgrounds(&sd.0, &work).unwrap().last().unwrap().customized);
+        // UI_Res.cpd no se toca.
+        assert_eq!(fs::read(sd.0.join("cubegm/UI_Res.cpd")).unwrap(), sample_ui());
+
+        restore_background(&sd.0, &work, LOADING).unwrap();
+        assert_eq!(fs::read(sd.0.join("cubegm/resource.cpd")).unwrap(), resource);
+    }
+
+    #[test]
+    fn sin_resource_cpd_no_ofrece_pantalla_de_carga() {
+        let (sd, pc, _) = card("noloading");
+        let list = list_backgrounds(&sd.0, &pc.0.to_string_lossy()).unwrap();
+        assert!(list.iter().all(|b| b.name != LOADING));
+    }
+
+    /// `KeyMapping` gris y una tira con un píxel naranja (el botón) por recorte.
+    fn ui_with_keys() -> Vec<u8> {
+        let mapping = vec![0x8Cu8; SCREEN_BYTES];
+        let mut tiles = vec![0x8Cu8; TILES_BYTES];
+        for i in 0..TILE_SPOTS.len() {
+            let pos = (i * TILE_HEIGHT as usize * TILE_WIDTH as usize + 10) * 4;
+            tiles[pos..pos + 4].copy_from_slice(&[0x10, 0x70, 0xE0, 0xFF]);
+        }
+        let (a, b) = (entry(KEY_MAPPING, SCREEN_BYTES), entry(KEY_TILES, TILES_BYTES));
+        write_entries(&[(&a, &mapping), (&b, &tiles)])
+    }
+
+    #[test]
+    fn al_cambiar_el_mapa_de_teclas_rehace_las_teclas_resaltadas() {
+        let (sd, pc, picture) = card("keys");
+        let work = pc.0.to_string_lossy().to_string();
+        let before = ui_with_keys();
+        fs::write(sd.0.join("cubegm/UI_Res.cpd"), &before).unwrap();
+        let names: Vec<String> = list_backgrounds(&sd.0, &work).unwrap().into_iter().map(|b| b.name).collect();
+        assert_eq!(names, [KEY_MAPPING, KEY_TILES]);
+        assert!(!background_preview(&sd.0, KEY_TILES).unwrap().is_empty());
+
+        replace_background(&sd.0, &work, KEY_MAPPING, &picture).unwrap();
+        let ui = fs::read(sd.0.join("cubegm/UI_Res.cpd")).unwrap();
+        let entries = read_entries(&ui).unwrap();
+        let tiles = &ui[entries[1].data.clone()];
+        // El botón conserva su color y el resto toma el fondo nuevo (rojo).
+        assert_eq!(&tiles[40..44], &[0x10, 0x70, 0xE0, 0xFF]);
+        assert_eq!(&tiles[..4], &[0, 0, 255, 255]);
+        let list = list_backgrounds(&sd.0, &work).unwrap();
+        assert!(list.iter().all(|b| b.customized));
+
+        // Restaurar el mapa de teclas devuelve también las teclas resaltadas.
+        restore_background(&sd.0, &work, KEY_MAPPING).unwrap();
+        assert_eq!(fs::read(sd.0.join("cubegm/UI_Res.cpd")).unwrap(), before);
+    }
+
+    #[test]
+    fn las_teclas_resaltadas_tambien_se_pueden_subir_a_mano() {
+        let (sd, pc, picture) = card("keys-manual");
+        let work = pc.0.to_string_lossy().to_string();
+        fs::write(sd.0.join("cubegm/UI_Res.cpd"), ui_with_keys()).unwrap();
+        replace_background(&sd.0, &work, KEY_TILES, &picture).unwrap();
+        let ui = fs::read(sd.0.join("cubegm/UI_Res.cpd")).unwrap();
+        let entries = read_entries(&ui).unwrap();
+        assert_eq!(entries[1].data.len(), TILES_BYTES);
+        assert!(ui[entries[0].data.clone()].iter().all(|&b| b == 0x8C), "el mapa de teclas no cambia");
+    }
+
+    #[test]
     fn rechaza_entradas_pequenas_e_imagenes_invalidas() {
         let (sd, pc, _) = card("bad");
         let work = pc.0.to_string_lossy().to_string();
@@ -392,5 +673,27 @@ mod tests {
         assert!(replace_background(&sd.0, &work, "GBA.raw", &not_image).is_err());
         let (_, _, picture) = card("bad2");
         assert!(replace_background(&sd.0, &work, "Icon.raw", &picture).is_err());
+    }
+}
+
+/// Prueba manual con archivos reales: `BUNKO_REAL_SD=<carpeta con cubegm/>`
+/// (una copia, nunca la tarjeta) y `cargo test --offline real_card -- --ignored`.
+#[cfg(test)]
+mod real_card {
+    use super::*;
+
+    #[test]
+    #[ignore]
+    fn real_card() {
+        let sd = std::path::PathBuf::from(std::env::var("BUNKO_REAL_SD").unwrap());
+        let work = std::env::var("BUNKO_REAL_WORK").unwrap();
+        let loading = std::env::var("BUNKO_REAL_LOADING").unwrap();
+        let mapping = std::env::var("BUNKO_REAL_MAPPING").unwrap();
+        replace_background(&sd, &work, LOADING, Path::new(&loading)).unwrap();
+        replace_background(&sd, &work, KEY_MAPPING, Path::new(&mapping)).unwrap();
+        let list = list_backgrounds(&sd, &work).unwrap();
+        for b in list.iter().filter(|b| b.customized) {
+            println!("personalizado: {}", b.name);
+        }
     }
 }

@@ -10,6 +10,7 @@ use std::{
 use tauri::{AppHandle, Manager, State};
 
 mod backgrounds;
+mod deflated_zip;
 mod logos;
 mod look;
 mod saves;
